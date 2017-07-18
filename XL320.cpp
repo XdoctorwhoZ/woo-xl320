@@ -65,7 +65,7 @@ void XL320::begin(Stream &stream)
 void XL320::setup(XlSerial& xlSerial)
 {
     mXlSerial = &xlSerial;
-    setXlBaudRate(BaudRate::Br115200);
+    setXlBaudRate(BaudRate::Br1Mbps);
 }
 
 /* ============================================================================
@@ -74,6 +74,21 @@ void XL320::setup(XlSerial& xlSerial)
 XL320::BaudRate XL320::getXlBaudRate() const
 {
     return mXlSerialBaudRate;
+}
+
+/* ============================================================================
+ *
+ * */
+String XL320::getXlBaudRateString() const
+{
+    switch( mController.getXlBaudRate() )
+    {
+        case XL320::Br9600   : return String("9600"   );
+        case XL320::Br57600  : return String("57600"  );
+        case XL320::Br115200 : return String("115200" );
+        case XL320::Br1Mbps  : return String("1000000");
+        default              : return QString("?");
+    }
 }
 
 /* ============================================================================
@@ -565,3 +580,4 @@ bool XL320::Packet::isValid() {
     unsigned short storedChecksum = data[length+5]+(data[length+6]<<8);
     return storedChecksum == update_crc(0,data,length+5);
 }
+

@@ -7,8 +7,8 @@ const char* XxCmd::Names[Value::Total] = {
       "XBAUD"
     , "SELECT"
     , "BAUD"
-    , "GOAL"
-    , "SPEED"
+    , "GPOS"
+    , "GSPEED"
     , "LED"
     , "TORQUE"
 };
@@ -53,3 +53,4 @@ bool XxCmd::IsTheSameString(const char* beg, const char* end, const char* word)
     }
     return true;
 }
+

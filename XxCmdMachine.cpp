@@ -87,6 +87,7 @@ int XxCmdMachine::parse(const char* command)
             {
                 case XxCmd::XBaud:  sts = cmdXbaudGetter() ; break;
                 case XxCmd::Select: sts = cmdSelectGetter(); break;
+                // case XxCmd::Gpos  : 
                 default: return syntaxError("unknown");
             }
         }
@@ -146,15 +147,7 @@ void XxCmdMachine::addCmdChar(char c)
  * */
 int XxCmdMachine::cmdXbaudGetter()
 {
-    String msg = "+XBAUD:";
-    switch( mController.getXlBaudRate() )
-    {
-        case XL320::Br9600   : msg += "9600"    ; break;
-        case XL320::Br57600  : msg += "57600"   ; break;
-        case XL320::Br115200 : msg += "115200"  ; break;
-        case XL320::Br1Mbps  : msg += "1000000" ; break;
-    }
-    msg += "\r\n";
+    String msg = "+XBAUD:" + mController.getXlBaudRateString() + "\r\n";
     reply(msg.c_str());
     return 0;
 }
@@ -166,6 +159,15 @@ int XxCmdMachine::cmdSelectGetter()
 {
     String msg = "+SELECT:" + mController.getSelectedServoString() + "\r\n";
     reply(msg.c_str());
+    return 0;
+}
+
+/* ============================================================================
+ *
+ * */
+int XxCmdMachine::cmdGposGetter()
+{
+
     return 0;
 }
 
@@ -198,6 +200,10 @@ int XxCmdMachine::cmdXbaudSetter(const char* args)
     }
 
     mController.setXlBaudRate(br);
+
+    String msg = "+XBAUD:" + mController.getXlBaudRateString() + "\r\n";
+    reply(msg.c_str());
+
     return 0;
 }
 
@@ -231,9 +237,16 @@ int XxCmdMachine::cmdSelectSetter(const char* args)
 
     mController.selectServo(ids, number);
 
-
     String msg = "+SELECT=" + mController.getSelectedServoString() + "\r\n";
     reply(msg.c_str());
 
     return 0;
+}
+
+/* ============================================================================
+ *
+ * */
+int XxCmdMachine::cmdGposSetter(const char* args)
+{
+    
 }

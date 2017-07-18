@@ -38,3 +38,4 @@ unsigned short update_crc(unsigned short crc_accum, unsigned char *data_blk_ptr,
 
 
 #endif /* DXL_PRO_H_ */
+

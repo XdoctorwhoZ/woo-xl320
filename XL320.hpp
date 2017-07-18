@@ -136,6 +136,10 @@ public:
     //!
     BaudRate getXlBaudRate() const;
 
+    //! Get the xl serial baudrate as string 
+    //!
+    String getXlBaudRateString() const;
+
     //! Set a new baudrate for the xl serial
     //!
     void setXlBaudRate(BaudRate br);
@@ -150,7 +154,8 @@ public:
     //!
     void selectServo(const byte* ids, byte number = 1);
 
-
+    // === ===
+    
     
     void moveJoint(int id, int value);
     void setJointSpeed(int id, int value);
@@ -210,3 +215,4 @@ public:
 };
 
 #endif
+

@@ -63,3 +63,4 @@ unsigned short update_crc(unsigned short crc_accum, unsigned char *data_blk_ptr,
 
 	return crc_accum;
 }
+

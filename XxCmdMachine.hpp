@@ -46,18 +46,6 @@ private:
     XL320 mController;
 
 
-
-
-    //! Id of the current joint controlled
-    //!
-    int mCurrentId;
-
-    //! Baudrate used by the serial driver to communicate with xl device
-    //!
-    BaudRate mCurrentBaudRate;
-
-
-
 public:
 
     //! Constructor
@@ -94,10 +82,12 @@ private:
     //! XX+SELECT?
     int cmdXbaudGetter();
     int cmdSelectGetter();
+    int cmdGposGetter();
 
     //! XX+SELECT=
     int cmdXbaudSetter(const char* args);
     int cmdSelectSetter(const char* args);
+    int cmdGposSetter(const char* args);
 
 
 
@@ -170,3 +160,4 @@ public:
 
 
 #endif // XXCMDMACHINE_HPP
+

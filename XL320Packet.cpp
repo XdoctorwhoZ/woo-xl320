@@ -108,3 +108,4 @@ bool XL320Packet::isValid() {
     unsigned short storedChecksum = data[length+5]+(data[length+6]<<8);
     return storedChecksum == update_crc(0,data,length+5);
 }
+
