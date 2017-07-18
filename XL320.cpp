@@ -19,176 +19,256 @@
 
 #include "Arduino.h"
 #include "dxl_pro.h"
-#include "XL320.h"
+#include "XL320.hpp"
 #include <stdlib.h>
 #include <stdarg.h>
 
 // Macro for the selection of the Serial Port
 #define sendData(args)  (this->stream->write(args))    // Write Over Serial
 #define beginCom(args)      // Begin Serial Comunication
-#define readData()		(this->stream->read())	
+#define readData()      (this->stream->read())  
 
 // Select the Switch to TX/RX Mode Pin
 #define setDPin(DirPin,Mode)    
 #define switchCom(DirPin,Mode)   // Switch to TX/RX Mode
 
-#define NANO_TIME_DELAY 12000
 
 
-XL320::XL320() {
-
+/* ============================================================================
+ *
+ * */
+XL320::XL320()
+    : mNumberOfSelectedServo(1)
+{
+    mSelectedServoIds[0] = 1;
 }
 
-XL320::~XL320() {
-}
+/* ============================================================================
+ *
+ * */
+XL320::~XL320()
+{ }
 
+/* ============================================================================
+ *
+ * */
 void XL320::begin(Stream &stream)
-{	
-	//setDPin(Direction_Pin=4,OUTPUT);
-	//beginCom(1000000);
+{   
+    //setDPin(Direction_Pin=4,OUTPUT);
+    //beginCom(1000000);
     this->stream = &stream;
-}	
+}   
+
+/* ============================================================================
+ *
+ * */
+void XL320::setup(XlSerial& xlSerial)
+{
+    mXlSerial = &xlSerial;
+    setXlBaudRate(BaudRate::Br115200);
+}
+
+/* ============================================================================
+ *
+ * */
+XL320::BaudRate XL320::getXlBaudRate() const
+{
+    return mXlSerialBaudRate;
+}
+
+/* ============================================================================
+ *
+ * */
+void XL320::setXlBaudRate(XL320::BaudRate br)
+{
+    mXlSerialBaudRate = br;
+    // Modify serial config
+    mXlSerial->end();
+    switch(mXlSerialBaudRate)
+    {
+        case BaudRate::Br9600   : mXlSerial->begin(9600);    break;
+        case BaudRate::Br57600  : mXlSerial->begin(57600);   break;
+        case BaudRate::Br115200 : mXlSerial->begin(115200);  break;
+        case BaudRate::Br1Mbps  : mXlSerial->begin(1000000); break;
+    }
+}
+
+/* ============================================================================
+ *
+ * */
+String XL320::getSelectedServoString() const
+{
+    String list = "";
+    for(int i=0 ; i<mNumberOfSelectedServo ; i++)
+    {
+        if(i == 0)
+        {
+            list += (int)mSelectedServoIds[i];
+        }
+        else
+        {
+            list += ',';
+            list += (int)mSelectedServoIds[i];
+        }
+    }
+    return list;
+}
+
+/* ============================================================================
+ *
+ * */
+void XL320::selectServo(const byte* ids, byte number)
+{
+    mNumberOfSelectedServo = number;
+    for(int i=0 ; i<mNumberOfSelectedServo ; i++)
+    {
+        mSelectedServoIds[i] = ids[i];
+    }
+}
+
+
+
 
 void XL320::moveJoint(int id, int value){
-	int Address = XL_GOAL_POSITION_L;
-	
-	sendPacket(id, Address, value);
-	this->stream->flush();
+    int Address = XL_GOAL_POSITION_L;
+    
+    sendPacket(id, Address, value);
+    this->stream->flush();
 
-	nDelay(NANO_TIME_DELAY);
+    nDelay(NANO_TIME_DELAY);
 }
 
 void XL320::setJointSpeed(int id, int value){
-	int Address = XL_GOAL_SPEED_L;
-	sendPacket(id, Address, value);
-	this->stream->flush();
+    int Address = XL_GOAL_SPEED_L;
+    sendPacket(id, Address, value);
+    this->stream->flush();
 
-	nDelay(NANO_TIME_DELAY);
+    nDelay(NANO_TIME_DELAY);
 
 }
 
 void XL320::LED(int id, char led_color[]){
-	int Address = XL_LED;
-	int val = 0;
-	
-	if(led_color[0] == 'r'){
-		val = 1;
-	}
+    int Address = XL_LED;
+    int val = 0;
+    
+    if(led_color[0] == 'r'){
+        val = 1;
+    }
 
-	else if(led_color[0] == 'g'){
-		val = 2;
-	}
+    else if(led_color[0] == 'g'){
+        val = 2;
+    }
 
-	else if(led_color[0] == 'y'){
-		val = 3;
-	}
+    else if(led_color[0] == 'y'){
+        val = 3;
+    }
 
-	else if(led_color[0] == 'b'){
-		val = 4;
-	}
+    else if(led_color[0] == 'b'){
+        val = 4;
+    }
 
-	else if(led_color[0] == 'p'){
-		val = 5;
-	}
+    else if(led_color[0] == 'p'){
+        val = 5;
+    }
 
-	else if(led_color[0] == 'c'){
-		val = 6;
-	}
+    else if(led_color[0] == 'c'){
+        val = 6;
+    }
 
-	else if(led_color[0] == 'w'){
-		val = 7;
-	}
-	
-	else if(led_color[0] == 'o'){
-		val = 0;
-	}
-	
-	sendPacket(id, Address, val);
-	this->stream->flush();
-	
-	nDelay(NANO_TIME_DELAY);
-}	
+    else if(led_color[0] == 'w'){
+        val = 7;
+    }
+    
+    else if(led_color[0] == 'o'){
+        val = 0;
+    }
+    
+    sendPacket(id, Address, val);
+    this->stream->flush();
+    
+    nDelay(NANO_TIME_DELAY);
+}   
 
 void XL320::setJointTorque(int id, int value){
-	int Address = XL_GOAL_TORQUE;
-	sendPacket(id, Address, value);
-	this->stream->flush();
-	nDelay(NANO_TIME_DELAY);
+    int Address = XL_GOAL_TORQUE;
+    sendPacket(id, Address, value);
+    this->stream->flush();
+    nDelay(NANO_TIME_DELAY);
 
 }
 
 void XL320::TorqueON(int id){
-	
-	int Address = XL_TORQUE_ENABLE;
-	int value = 1;
-	
-	sendPacket(id, Address, value);
-	this->stream->flush();
-	nDelay(NANO_TIME_DELAY);
+    
+    int Address = XL_TORQUE_ENABLE;
+    int value = 1;
+    
+    sendPacket(id, Address, value);
+    this->stream->flush();
+    nDelay(NANO_TIME_DELAY);
 }
 
 void XL320::TorqueOFF(int id){
-	
-	int Address = XL_TORQUE_ENABLE;
-	int value = 0;
-	
-	sendPacket(id, Address, value);
-	this->stream->flush();
-	nDelay(NANO_TIME_DELAY);
+    
+    int Address = XL_TORQUE_ENABLE;
+    int value = 0;
+    
+    sendPacket(id, Address, value);
+    this->stream->flush();
+    nDelay(NANO_TIME_DELAY);
 }
 
 
 void XL320::quickTest(){
-	
-	int position_tmp = 0;
-	
-	for(int id = 1; id < 6; id++){
-		sendPacket(id, XL_LED, random(1,7));
-		nDelay(NANO_TIME_DELAY);
-		this->stream->flush();
-		sendPacket(id, XL_GOAL_SPEED_L, 200);
-		nDelay(NANO_TIME_DELAY);
-		this->stream->flush();
-	}
-	
-	for(int id = 1; id < 6; id++){
-	    
-	    position_tmp = random(0,512); 
-		
-		if(id != 3){
-		    sendPacket(id, XL_GOAL_POSITION_L, position_tmp);
-			delay(1000);
-			this->stream->flush();
-		}
-		
-		else{
-			sendPacket(3, XL_GOAL_POSITION_L, 512-position_tmp);
-			delay(1000);
-			this->stream->flush();
-		}
-	}
-	
-	for(int id = 1; id < 6; id++){
-		sendPacket(id, XL_LED, 2);
-		nDelay(NANO_TIME_DELAY);
-		this->stream->flush();
-		sendPacket(id, XL_GOAL_SPEED_L, 1023);
-		nDelay(NANO_TIME_DELAY);
-		this->stream->flush();
-	}
-	
-	for(int id = 1; id < 6; id++){
-		sendPacket(id, XL_LED, 0);
-		nDelay(NANO_TIME_DELAY);
-		this->stream->flush();
-	}
-	
+    
+    int position_tmp = 0;
+    
+    for(int id = 1; id < 6; id++){
+        sendPacket(id, XL_LED, random(1,7));
+        nDelay(NANO_TIME_DELAY);
+        this->stream->flush();
+        sendPacket(id, XL_GOAL_SPEED_L, 200);
+        nDelay(NANO_TIME_DELAY);
+        this->stream->flush();
+    }
+    
+    for(int id = 1; id < 6; id++){
+        
+        position_tmp = random(0,512); 
+        
+        if(id != 3){
+            sendPacket(id, XL_GOAL_POSITION_L, position_tmp);
+            delay(1000);
+            this->stream->flush();
+        }
+        
+        else{
+            sendPacket(3, XL_GOAL_POSITION_L, 512-position_tmp);
+            delay(1000);
+            this->stream->flush();
+        }
+    }
+    
+    for(int id = 1; id < 6; id++){
+        sendPacket(id, XL_LED, 2);
+        nDelay(NANO_TIME_DELAY);
+        this->stream->flush();
+        sendPacket(id, XL_GOAL_SPEED_L, 1023);
+        nDelay(NANO_TIME_DELAY);
+        this->stream->flush();
+    }
+    
+    for(int id = 1; id < 6; id++){
+        sendPacket(id, XL_LED, 0);
+        nDelay(NANO_TIME_DELAY);
+        this->stream->flush();
+    }
+    
 }
 
 int XL320::getSpoonLoad(){
-	int spoon = RXsendPacket(5, XL_PRESENT_LOAD);
-	this->stream->flush();
-	return spoon;
+    int spoon = RXsendPacket(5, XL_PRESENT_LOAD);
+    this->stream->flush();
+    return spoon;
 }
 
 int XL320::getJointPosition(int id){
@@ -198,9 +278,9 @@ int XL320::getJointPosition(int id){
     if(this->readPacket(buffer,255)>0) {
       Packet p(buffer,255);
       if(p.isValid() && p.getParameterCount()>=3) {
-	return (p.getParameter(1))|(p.getParameter(2)<<8);
+    return (p.getParameter(1))|(p.getParameter(2)<<8);
       } else {
-	return -1;
+    return -1;
       }
     }
     return -2;
@@ -247,10 +327,10 @@ int XL320::sendPacket(int id, int Address, int value){
     byte txbuffer[bufsize];
 
     Packet p(txbuffer,bufsize,id,0x03,4,
-	DXL_LOBYTE(Address),
-	DXL_HIBYTE(Address),
-	DXL_LOBYTE(value),
-	DXL_HIBYTE(value));
+    DXL_LOBYTE(Address),
+    DXL_HIBYTE(Address),
+    DXL_LOBYTE(value),
+    DXL_HIBYTE(value));
 
 
     int size = p.getSize();
@@ -258,17 +338,17 @@ int XL320::sendPacket(int id, int Address, int value){
 
     //stream->write(txbuffer,bufsize);
 
-    return bufsize;	
+    return bufsize; 
 }
 
 
 
 void XL320::nDelay(uint32_t nTime){
     /*
-	uint32_t max;
-	for( max=0; max < nTime; max++){
+    uint32_t max;
+    for( max=0; max < nTime; max++){
 
-	}
+    }
     */
 }
 
@@ -282,26 +362,26 @@ int XL320::RXsendPacket(int id, int Address) {
 
 int XL320::RXsendPacket(int id, int Address, int size){
 
-	/*Dynamixel 2.0 communication protocol
-	  used by Dynamixel XL-320 and Dynamixel PRO only.
-	*/
+    /*Dynamixel 2.0 communication protocol
+      used by Dynamixel XL-320 and Dynamixel PRO only.
+    */
 
     const int bufsize = 16;
 
     byte txbuffer[bufsize];
 
     Packet p(txbuffer,bufsize,id,0x02,4,
-	DXL_LOBYTE(Address),
-	DXL_HIBYTE(Address),
-	DXL_LOBYTE(size),
-	DXL_HIBYTE(size));
+    DXL_LOBYTE(Address),
+    DXL_HIBYTE(Address),
+    DXL_LOBYTE(size),
+    DXL_HIBYTE(size));
 
 
     stream->write(txbuffer,p.getSize());
 
     //stream->write(txbuffer,bufsize);
 
-    return p.getSize();	
+    return p.getSize(); 
 }
 
 // from http://stackoverflow.com/a/133363/195061
@@ -325,57 +405,57 @@ int XL320::readPacket(unsigned char *BUFFER, size_t SIZE) {
 
     FSM {
       STATE(start) {
-	if(THISBYTE==0xFF) NEXTSTATE(header_ff_1);
-	I=0; NEXTSTATE(start);
+    if(THISBYTE==0xFF) NEXTSTATE(header_ff_1);
+    I=0; NEXTSTATE(start);
       }
       STATE(header_ff_1) {
-	if(THISBYTE==0xFF) NEXTSTATE(header_ff_2);
-	I=0; NEXTSTATE(start);	
+    if(THISBYTE==0xFF) NEXTSTATE(header_ff_2);
+    I=0; NEXTSTATE(start);  
       }
       STATE(header_ff_2) {
-	if(THISBYTE==0xFD) NEXTSTATE(header_fd);
-	// yet more 0xFF's? stay in this state
-	if(THISBYTE==0xFF) NEXTSTATE(header_ff_2);
-	// anything else? restart
-	I=0; NEXTSTATE(start);
+    if(THISBYTE==0xFD) NEXTSTATE(header_fd);
+    // yet more 0xFF's? stay in this state
+    if(THISBYTE==0xFF) NEXTSTATE(header_ff_2);
+    // anything else? restart
+    I=0; NEXTSTATE(start);
       }
       STATE(header_fd) {
-	  // reading reserved, could be anything in theory, normally 0
+      // reading reserved, could be anything in theory, normally 0
       }
       STATE(header_reserved) {
-	  // id = THISBYTE
+      // id = THISBYTE
       }
       STATE(id) {
-	length = THISBYTE;
+    length = THISBYTE;
       }
       STATE(length_1) {
-	length += THISBYTE<<8; // eg: length=4
+    length += THISBYTE<<8; // eg: length=4
       }
       STATE(length_2) {
       }
       STATE(instr) {
-	// instr = THISBYTE
+    // instr = THISBYTE
         // check length because
         // action and reboot commands have no parameters
-	if(I-length>=5) NEXTSTATE(checksum_1);
+    if(I-length>=5) NEXTSTATE(checksum_1);
       }
       STATE(params) {
-	  // check length and maybe skip to checksum
-	  if(I-length>=5) NEXTSTATE(checksum_1);
-	  // or keep reading params
-	  NEXTSTATE(params);
+      // check length and maybe skip to checksum
+      if(I-length>=5) NEXTSTATE(checksum_1);
+      // or keep reading params
+      NEXTSTATE(params);
       }
       STATE(checksum_1) {
       }
       STATE(checksum_2) {
-	  // done
-	  return I; 
+      // done
+      return I; 
       }
       OVERFLOW {
           return -1;
       }
       TIMEOUT {
-	  return -2;
+      return -2;
       }
 
     }
@@ -383,25 +463,25 @@ int XL320::readPacket(unsigned char *BUFFER, size_t SIZE) {
 
 
 XL320::Packet::Packet(
-	unsigned char *data,
-	size_t data_size,
-	unsigned char id,
-	unsigned char instruction,
-	int parameter_data_size,
-	...) {
+    unsigned char *data,
+    size_t data_size,
+    unsigned char id,
+    unsigned char instruction,
+    int parameter_data_size,
+    ...) {
 
 
     // [ff][ff][fd][00][id][len1][len2] { [instr][params(parameter_data_size)][crc1][crc2] }
     unsigned int length=3+parameter_data_size;
     if(!data) {
-	// [ff][ff][fd][00][id][len1][len2] { [data(length)] }
-	this->data_size = 7+length;   
-	this->data = (unsigned char*)malloc(data_size);
-	this->freeData = true;
+    // [ff][ff][fd][00][id][len1][len2] { [data(length)] }
+    this->data_size = 7+length;   
+    this->data = (unsigned char*)malloc(data_size);
+    this->freeData = true;
     } else {
-	this->data = data;
-	this->data_size = data_size;
-	this->freeData = false;
+    this->data = data;
+    this->data_size = data_size;
+    this->freeData = false;
     }
     this->data[0]=0xFF;
     this->data[1]=0xFF;
@@ -414,8 +494,8 @@ XL320::Packet::Packet(
     va_list args;
     va_start(args, parameter_data_size); 
     for(int i=0;i<parameter_data_size;i++) {
-	unsigned char arg = va_arg(args, int);
-	this->data[8+i]=arg;
+    unsigned char arg = va_arg(args, int);
+    this->data[8+i]=arg;
     }
     unsigned short crc = update_crc(0,this->data,this->getSize()-2);
     this->data[8+parameter_data_size]=crc&0xff;
@@ -432,7 +512,7 @@ XL320::Packet::Packet(unsigned char *data, size_t size) {
 
 XL320::Packet::~Packet() {
     if(this->freeData==true) {
-	free(this->data);
+    free(this->data);
     }
 }
 
@@ -446,10 +526,10 @@ void XL320::Packet::toStream(Stream &stream) {
     stream.print("parameter count: ");
     stream.println(this->getParameterCount(), DEC);
     for(int i=0;i<this->getParameterCount(); i++) {
-	stream.print(this->getParameter(i),HEX);
-	if(i<this->getParameterCount()-1) {
-	    stream.print(",");
-	}
+    stream.print(this->getParameter(i),HEX);
+    if(i<this->getParameterCount()-1) {
+        stream.print(",");
+    }
     }
     stream.println();
     stream.print("valid: ");

@@ -14,9 +14,10 @@ XxCmdMachine::XxCmdMachine()
 /* ============================================================================
  *
  * */
-void XxCmdMachine::setup(Stream* stream)
+void XxCmdMachine::setup(Stream& cmdStream, XL320::XlSerial& xlSerial)
 {
-    mStream = stream;
+    mStream = &cmdStream;
+    mController.setup(xlSerial);
 }
 
 /* ============================================================================
@@ -24,18 +25,21 @@ void XxCmdMachine::setup(Stream* stream)
  * */
 void XxCmdMachine::loop()
 {
+    // Get input char and parse if needed
     while (mStream->available())
     {
         char c = mStream->read();
-        *mCmdPtr = c;
-        mCmdPtr++;
+        addCmdChar(c);
         if (c=='\n')
         {
-            *mCmdPtr = '\0';
+            addCmdChar('\0');
             parse(mCmdBuffer);
-            mCmdPtr = mCmdBuffer;
+            rstCmdPtr();
         }
     }
+
+    // Set a delay to account for the receive delay period
+    delay(100);
 }
 
 /* ============================================================================
@@ -43,13 +47,14 @@ void XxCmdMachine::loop()
  * */
 int XxCmdMachine::parse(const char* command)
 {
+    int sts = 0;
     const char* ptr = command;
 
     // Check XX
     for (int i=0 ; i<2 ; i++)
     {
         if (*ptr != 'X') {
-            return syntaxError();
+            return syntaxError("start XX");
         }
         ptr++;
     }
@@ -77,39 +82,80 @@ int XxCmdMachine::parse(const char* command)
         // Getter command
         if (*ptr == '?')
         {
+            // execute command
             switch(cmd)
             {
-                case XxCmd::Select: cmdSelectGetter(); break; 
-
-                default: return syntaxError();
+                case XxCmd::XBaud:  sts = cmdXbaudGetter() ; break;
+                case XxCmd::Select: sts = cmdSelectGetter(); break;
+                default: return syntaxError("unknown");
             }
         }
         // Setter command
         else
         {
+            // skip =
+            ptr++;
 
+            // execute command
+            switch(cmd)
+            {
+                case XxCmd::XBaud:  sts = cmdXbaudSetter(ptr) ; break;
+                case XxCmd::Select: sts = cmdSelectSetter(ptr); break; 
+                default: return syntaxError("unknown");
+            }
         }
-
     }
     else
     {
         if (*ptr != '\r') {
-            return syntaxError();
+            return syntaxError("end \\r\\n");
         }
         ptr++;
         if (*ptr != '\n') {
-            return syntaxError();
+            return syntaxError("end \\r\\n");
         }
         ptr++;
     }
 
+    // Check status
+    if(sts)
+    {
+        reply("ERROR\r\n");
+    }
+    else
+    {
+        reply("OK\r\n");
+    }
+    return sts;
+}
 
-    // check XX
-    // check +
-    // check CMD
 
+/* ============================================================================
+ *
+ * */
+void XxCmdMachine::addCmdChar(char c)
+{
+    if( (mCmdPtr-mCmdBuffer) < MaxCmdSize )
+    {
+        *mCmdPtr = c; mCmdPtr++;
+    }
+}
 
-    reply("OK\r\n");
+/* ============================================================================
+ *
+ * */
+int XxCmdMachine::cmdXbaudGetter()
+{
+    String msg = "+XBAUD:";
+    switch( mController.getXlBaudRate() )
+    {
+        case XL320::Br9600   : msg += "9600"    ; break;
+        case XL320::Br57600  : msg += "57600"   ; break;
+        case XL320::Br115200 : msg += "115200"  ; break;
+        case XL320::Br1Mbps  : msg += "1000000" ; break;
+    }
+    msg += "\r\n";
+    reply(msg.c_str());
     return 0;
 }
 
@@ -118,18 +164,76 @@ int XxCmdMachine::parse(const char* command)
  * */
 int XxCmdMachine::cmdSelectGetter()
 {
-    String msg = "+SELECT:";
-    msg += String(mCurrentId);
-    msg += "\r\n";
+    String msg = "+SELECT:" + mController.getSelectedServoString() + "\r\n";
     reply(msg.c_str());
+    return 0;
 }
 
 /* ============================================================================
  *
  * */
-// int XxCmdMachine::cmdSelectSetter()
-// {
-    
-// }
+int XxCmdMachine::cmdXbaudSetter(const char* args)
+{
+    char arg[16];
+    XxArgParser ap(args);
+
+    ap.getNextArg(arg);
+    String baud(arg);
+
+    XL320::BaudRate br;
+    if      (baud == "9600") {
+        br = XL320::Br9600;
+    }
+    else if (baud == "57600") {
+        br = XL320::Br57600;
+    }
+    else if (baud == "115200") {
+        br = XL320::Br115200;
+    }
+    else if (baud == "1000000") {
+        br = XL320::Br1Mbps;
+    }
+    else {
+        return 50;
+    }
+
+    mController.setXlBaudRate(br);
+    return 0;
+}
+
+/* ============================================================================
+ *
+ * */
+int XxCmdMachine::cmdSelectSetter(const char* args)
+{
+    byte number = 0;
+    byte ids[XL320::MaxServoSelectable];
+
+    char arg[8];
+    XxArgParser ap(args);
+
+    while(ap.getNextArg(arg))
+    {
+        #ifdef XXXDEBUG
+            Serial.print("arg: ");
+            Serial.println(arg);
+        #endif // XXXDEBUG
+
+        ids[number] = String(arg).toInt();
+
+        #ifdef XXXDEBUG
+            Serial.print("ids: ");
+            Serial.println(ids[number]);
+        #endif // XXXDEBUG
+
+        number++;
+    }
+
+    mController.selectServo(ids, number);
 
 
+    String msg = "+SELECT=" + mController.getSelectedServoString() + "\r\n";
+    reply(msg.c_str());
+
+    return 0;
+}
