@@ -8,14 +8,15 @@ struct XxCmd
 
     enum Value
     {
-          XBaud   = 0
-        , Select  = 1
-        , Baud    = 2
-        , Gpos    = 3
-        , Gspeed  = 4
-        , Led     = 5
-        , Gtorque  = 6
-        , Total   = 7
+        XBaud   = 0 ,
+        Ping    = 1 ,
+        Select  = 2 ,
+        Baud    = 3 ,
+        Gpos    = 4 ,
+        Gspeed  = 5 ,
+        Led     = 6 ,
+        Gtorque = 7 ,
+        Total   = 8 ,
     };
 
 

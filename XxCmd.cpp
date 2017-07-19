@@ -4,13 +4,14 @@
  *
  * */
 const char* XxCmd::Names[Value::Total] = {
-      "XBAUD"
-    , "SELECT"
-    , "BAUD"
-    , "GPOS"
-    , "GSPEED"
-    , "LED"
-    , "TORQUE"
+    "XBAUD"       ,
+    "PING"        ,
+    "SELECT"      ,
+    "BAUD"        ,
+    "GPOS"        ,
+    "GSPEED"      ,
+    "LED"         ,
+    "TORQUE"      ,
 };
 
 /* ============================================================================

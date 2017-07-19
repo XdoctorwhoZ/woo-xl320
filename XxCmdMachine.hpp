@@ -11,10 +11,10 @@
 #include <Arduino.h>
 
 // Woo
-#include "XL320.hpp"
 #include "XxCmd.hpp"
+#include "XL320Controller.hpp"
 
-//!
+//! Machine to interpret command from serial
 //!
 class XxCmdMachine
 {
@@ -23,9 +23,6 @@ public:
 
     //! Maximal number of servo xl-320 selectable at once
     static constexpr byte MaxCmdSize = 128;
-
-
-    enum BaudRate { Br9600, Br57600, Br115200, Br1Mbps };
 
 private:
 
@@ -43,8 +40,7 @@ private:
 
     //! Controller for xl-320 servo chain
     //!
-    XL320 mController;
-
+    xl320::Controller mController;
 
 public:
 
@@ -54,7 +50,7 @@ public:
 
     //! Initialize the machine with a stream to read command and write status
     //!
-    void setup(Stream& cmdStream, XL320::XlSerial& xlSerial);
+    void setup(Stream& cmdStream, xl320::Controller::XlSerial& xlSerial);
 
     //! Check if there are some commands in the stream
     //!
@@ -81,6 +77,7 @@ private:
 
     //! XX+SELECT?
     int cmdXbaudGetter();
+    int cmdPingGetter();
     int cmdSelectGetter();
     int cmdGposGetter();
 

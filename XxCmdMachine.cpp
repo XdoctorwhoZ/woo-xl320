@@ -1,12 +1,13 @@
+// Woo
 #include "XxCmdMachine.hpp"
+
+// ---
+using namespace xl320;
 
 /* ============================================================================
  *
  * */
 XxCmdMachine::XxCmdMachine()
-    : 
-     mCurrentId(1)
-    , mCurrentBaudRate(Br1Mbps)
 {
     mCmdPtr = mCmdBuffer;
 }
@@ -14,7 +15,7 @@ XxCmdMachine::XxCmdMachine()
 /* ============================================================================
  *
  * */
-void XxCmdMachine::setup(Stream& cmdStream, XL320::XlSerial& xlSerial)
+void XxCmdMachine::setup(Stream& cmdStream, xl320::Controller::XlSerial& xlSerial)
 {
     mStream = &cmdStream;
     mController.setup(xlSerial);
@@ -102,9 +103,11 @@ int XxCmdMachine::parse(const char* command)
             {
                 case XxCmd::XBaud:  sts = cmdXbaudSetter(ptr) ; break;
                 case XxCmd::Select: sts = cmdSelectSetter(ptr); break; 
+                case XxCmd::Gpos:   sts = cmdGposSetter(ptr);   break; 
                 default: return syntaxError("unknown");
             }
         }
+        return 0;
     }
     else
     {
@@ -116,20 +119,13 @@ int XxCmdMachine::parse(const char* command)
             return syntaxError("end \\r\\n");
         }
         ptr++;
-    }
-
-    // Check status
-    if(sts)
-    {
-        reply("ERROR\r\n");
-    }
-    else
-    {
         reply("OK\r\n");
+        return 0;
     }
-    return sts;
-}
 
+    reply("ERROR\r\n");
+    return 1;
+}
 
 /* ============================================================================
  *
@@ -147,7 +143,7 @@ void XxCmdMachine::addCmdChar(char c)
  * */
 int XxCmdMachine::cmdXbaudGetter()
 {
-    String msg = "+XBAUD:" + mController.getXlBaudRateString() + "\r\n";
+    String msg = "+XBAUD:" + mController.getXlBaudRateString() + "\r\nOK\r\n";
     reply(msg.c_str());
     return 0;
 }
@@ -155,9 +151,17 @@ int XxCmdMachine::cmdXbaudGetter()
 /* ============================================================================
  *
  * */
+int XxCmdMachine::cmdPingGetter()
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
 int XxCmdMachine::cmdSelectGetter()
 {
-    String msg = "+SELECT:" + mController.getSelectedServoString() + "\r\n";
+    String msg = "+SELECT:" + mController.getSelectedServoString() + "\r\nOK\r\n";
     reply(msg.c_str());
     return 0;
 }
@@ -182,18 +186,18 @@ int XxCmdMachine::cmdXbaudSetter(const char* args)
     ap.getNextArg(arg);
     String baud(arg);
 
-    XL320::BaudRate br;
+    BaudRate br;
     if      (baud == "9600") {
-        br = XL320::Br9600;
+        br = Br9600;
     }
     else if (baud == "57600") {
-        br = XL320::Br57600;
+        br = Br57600;
     }
     else if (baud == "115200") {
-        br = XL320::Br115200;
+        br = Br115200;
     }
     else if (baud == "1000000") {
-        br = XL320::Br1Mbps;
+        br = Br1Mbps;
     }
     else {
         return 50;
@@ -201,9 +205,8 @@ int XxCmdMachine::cmdXbaudSetter(const char* args)
 
     mController.setXlBaudRate(br);
 
-    String msg = "+XBAUD:" + mController.getXlBaudRateString() + "\r\n";
+    String msg = "OK" + mController.getXlBaudRateString() + "\r\n";
     reply(msg.c_str());
-
     return 0;
 }
 
@@ -213,7 +216,7 @@ int XxCmdMachine::cmdXbaudSetter(const char* args)
 int XxCmdMachine::cmdSelectSetter(const char* args)
 {
     byte number = 0;
-    byte ids[XL320::MaxServoSelectable];
+    byte ids[Controller::MaxServoSelectable];
 
     char arg[8];
     XxArgParser ap(args);
@@ -237,9 +240,8 @@ int XxCmdMachine::cmdSelectSetter(const char* args)
 
     mController.selectServo(ids, number);
 
-    String msg = "+SELECT=" + mController.getSelectedServoString() + "\r\n";
+    String msg = "OK" + mController.getSelectedServoString() + "\r\n";
     reply(msg.c_str());
-
     return 0;
 }
 
@@ -248,5 +250,21 @@ int XxCmdMachine::cmdSelectSetter(const char* args)
  * */
 int XxCmdMachine::cmdGposSetter(const char* args)
 {
-    
+    int number = 0;
+    int values[Controller::MaxServoSelectable];
+
+    char arg[8];
+    XxArgParser ap(args);
+
+    while(ap.getNextArg(arg))
+    {
+        values[number] = String(arg).toInt();
+        number++;
+    }
+
+    mController.setGpos(values, number);
+
+    String msg = "OK\r\n";
+    reply(msg.c_str());
+    return 0;
 }
