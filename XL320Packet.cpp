@@ -99,4 +99,5 @@ String Packet::toString() const
         str += (int) getParameter(i);
     }
     str += ")";
+    return str;
 }

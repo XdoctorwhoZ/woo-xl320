@@ -87,6 +87,7 @@ int XxCmdMachine::parse(const char* command)
             switch(cmd)
             {
                 case XxCmd::XBaud:  sts = cmdXbaudGetter() ; break;
+                case XxCmd::Ping:   sts = cmdPingGetter(); break;
                 case XxCmd::Select: sts = cmdSelectGetter(); break;
                 // case XxCmd::Gpos  : 
                 default: return syntaxError("unknown");
@@ -153,7 +154,21 @@ int XxCmdMachine::cmdXbaudGetter()
  * */
 int XxCmdMachine::cmdPingGetter()
 {
+    byte ids[Controller::MaxServoSelectable];
 
+    int num = mController.ping(ids);
+
+    Serial.println(num, DEC);
+
+    String msg = "+PING:";
+    for(int i=0 ; i<num ; i++)
+    {
+        if(i!=0) msg += ',';
+        msg += (int) ids[i];
+    }
+    msg += "\r\nOK\r\n";
+    reply(msg.c_str());
+    return 0;
 }
 
 /* ============================================================================

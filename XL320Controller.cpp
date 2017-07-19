@@ -5,7 +5,7 @@
 using namespace xl320;
 
 // Uncomment to debug
-#define XL320Controller_DEBUG
+// #define XL320Controller_DEBUG
 
 /* ============================================================================
  *
@@ -149,16 +149,64 @@ void Controller::selectServo(const byte* ids, byte number)
  * */
 int Controller::readNextPacket(byte* buffer, int msize)
 {
-    int size = 0;
+    byte len_l;
+    byte len_h;
+    int params_size;
+
+    byte size = 0;
+    byte state = 0;
 
     while (mXlSerial->available())
     {
-        char c = mXlSerial->read();
-        Serial.println((int) c, HEX);
+        byte c = mXlSerial->read();
 
+        // Serial.print("state : ");
+        // Serial.print( state, DEC);
+        // Serial.print(" : ");
+        // Serial.println( c, HEX);
+
+        switch(state)
+        {
+            case 0: {
+                if(c != (byte)0xFF) return -1;
+                buffer[size] = c; size++; state++; break;
+            }
+            case 1: {
+                if(c != (byte)0xFF) return -2;
+                buffer[size] = c; size++; state++; break;
+            }
+            case 2: {
+                if(c != (byte)0xFD) return -3;
+                buffer[size] = c; size++; state++; break;
+            }
+            case 3: {
+                buffer[size] = c; size++; state++; break;
+            }
+            case 4: {
+                buffer[size] = c; size++; state++; break;
+            }
+            case 5: {
+                len_l = c;
+                buffer[size] = c; size++; state++; break;
+            }
+            case 6: {
+                len_h = c;
+                params_size = DXL_MAKEWORD(len_l, len_h);
+                buffer[size] = c; size++; state++; break;
+            }
+            case 7: {
+                if(params_size > 0) {
+                    buffer[size] = c; 
+                    size++;
+                    params_size--;
+                    if(params_size <= 0) {
+                        return size;
+                    }
+                }
+            }
+        }
     }
-
-    return -1;
+    return -42;
 }
 
 /* ============================================================================
@@ -221,15 +269,43 @@ void Controller::sendWritePacket(byte id, ControlIndex ci, int value) const
  * */
 int Controller::ping(byte* ids)
 {
-    int number = 0;
+    // RX buffer
+    const int rxBufferSize = 32;
+    byte rxBuffer[rxBufferSize];
 
+    // Broadcast ping
     sendPingPacket();
+    
+    // Wait for answers 200us should be large
+    delay(200);
 
+    // Check rx buffer
+    int size = 0;
+    int number = 0;
+    while(size != -42)
+    {
+        size = readNextPacket(rxBuffer, rxBufferSize);
+        if(size == -42) {
+            break;
+        }
 
-    const int rbufferSize = 32;
-    byte rbuffer[rbufferSize];
-    readNextPacket(rbuffer, rbufferSize);
+        Packet pack(rxBuffer, size);
 
+        #ifdef XL320Controller_DEBUG
+        Serial.print("pack : ");
+        Serial.println(size, DEC);
+        #endif
+
+        if(pack.getInstruction() == InsStatus) {
+            ids[number] = pack.getId();
+            number++;
+
+            #ifdef XL320Controller_DEBUG
+            Serial.print("new : ");
+            Serial.println(number, DEC);
+            #endif
+        }
+    }
 
     return number;
 }
