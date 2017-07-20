@@ -622,7 +622,14 @@ void XxCmdMachine::cmdVersionSetter(const char* args)
  * */
 void XxCmdMachine::cmdIdSetter(const char* args)
 {
+    char arg[16];
+    XxArgParser ap(args);
 
+    ap.getNextArg(arg);
+    String idstr(arg);
+    byte id = idstr.toInt();
+
+    mController.setId(id);
 }   
 
 /* ============================================================================
@@ -630,8 +637,31 @@ void XxCmdMachine::cmdIdSetter(const char* args)
  * */
 void XxCmdMachine::cmdBaudSetter(const char* args)
 {
+    char arg[16];
+    XxArgParser ap(args);
 
-    // mController.setBaud(BaudRate br);
+    ap.getNextArg(arg);
+    String baud(arg);
+
+    BaudRate br;
+    if      (baud == "9600") {
+        br = Br9600;
+    }
+    else if (baud == "57600") {
+        br = Br57600;
+    }
+    else if (baud == "115200") {
+        br = Br115200;
+    }
+    else if (baud == "1000000") {
+        br = Br1Mbps;
+    }
+    else {
+        return 50;
+    }
+
+    mController.setBaud(br);
+
 }
 
 /* ============================================================================

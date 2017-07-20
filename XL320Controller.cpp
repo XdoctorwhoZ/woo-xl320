@@ -213,6 +213,8 @@ void Controller::dropRxPackets()
     const int rxBufferSize = 32;
     byte rxBuffer[rxBufferSize];
 
+    delay(20);
+
     // Read packet and drop them until there is no more
     int size = 0;
     while(size != -42)

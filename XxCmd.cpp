@@ -7,7 +7,7 @@
 const char* XxCmd::Names[Value::Total] = {
     "XBAUD"             , // XBaud                       
     "PING"              , // Ping                        
-    "SELECT"            , // Select                      
+    "SEL"               , // Select                      
 
     "MODEL"             , // ModelNumber                 
     "VERSION"           , // Version                     
