@@ -13,55 +13,6 @@
 // ---
 namespace xl320 {
 
-//! Available baud rates to communicate with xl-320
-enum BaudRate { Br9600=0, Br57600=1, Br115200=2, Br1Mbps=3 };
-
-//! Index for the available control table entry
-//!
-enum ControlIndex
-{
-    CiModelNumber               =   0 ,
-    CiVersion                   =   1 ,
-    CiId                        =   2 ,
-    CiBaudRate                  =   3 ,
-    CiReturnDelayTime           =   4 ,
-    CiCwAngleLimit              =   5 ,
-    CiCcwAngleLimit             =   6 ,
-    CiControlMode               =   7 ,
-    CiLimitTemperature          =   8 ,
-    CiDownLimitVoltage          =   9 ,
-    CiUpLimitVoltage            =  10 ,
-    CiMaxTorque                 =  11 ,
-    CiReturnLevel               =  12 ,
-    CiAlarmShutdown             =  13 ,
-    CiTorqueEnable              =  14 ,
-    CiLed                       =  15 ,
-    CiDgain                     =  16 ,
-    CiIgain                     =  17 ,
-    CiPgain                     =  18 ,
-    CiGoalPosition              =  19 ,
-    CiGoalSpeed                 =  20 ,
-    CiGoalTorque                =  21 ,
-    CiPresentPosition           =  22 ,
-    CiPresentSpeed              =  23 ,
-    CiPresentLoad               =  24 ,
-    CiPresentVoltage            =  25 ,
-    CiPresentTemperature        =  26 ,
-    CiRegisteredInstruction     =  27 ,
-    CiMoving                    =  28 ,
-    CiHardwareError             =  29 ,
-    CiPunch                     =  30 ,
-    CiTotal                     =  31 ,
-};
-
-//! Stored data about each entry of the control table
-//!
-struct ControlReg
-{
-    byte addr; // Reg address
-    byte size; // Ref size in byte
-};
-
 //! Controller for xl-320 servo chain
 //!
 class Controller
@@ -129,6 +80,10 @@ public:
 
     // === Select Servos ===
 
+    //! Return the number of servo selected for actions
+    //!
+    byte getNumberOfSelectedServo() const { return mNumberOfSelectedServo; }
+
     //! Return the list of selected servo ids in a string form
     //!
     String getSelectedServoString() const;
@@ -144,9 +99,22 @@ public:
     //!
     int readNextPacket(byte* buffer, int msize);
 
+    //! Drop all Rx Packets
+    //!
+    void dropRxPackets();
+
+    //! Read incoming packets and fill values table.
+    //! values size must be equal to mNumberOfSelectedServo
+    //!
+    int readValuesFromRxPackets(int* values);
+
     //! To broadcast a ping packet
     //!
     void sendPingPacket();
+
+    //! To send packet to reg in 1 reg of 1 servo
+    //!
+    void sendReadPacket(byte id, ControlIndex ci) const;
 
     //! To send packet to write in 1 reg of 1 servo
     //!
@@ -157,18 +125,129 @@ public:
     //! Ping the chain and return the number of servo found
     //! Pass a byte table to get Ids of each servo
     //!
-    int ping(byte* ids = 0);
+    int ping(int* ids = 0);
 
-    // === Goal Position ===
 
-    void getGpos(int* positions) const;
-    void setGpos(const int* positions, int number) const;
+    // === ModelNumber ===
+    int getNumber(int* values) const;
 
-    // === Goal Speed ===
+    // === Version ===
+    int getVersion(int* values) const;
 
-    void getGspeed(int* speeds) const;
-    void setGspeed(const int* speeds) const;
+    // === Id ===
+    void setId(byte id) const; // Only once at time
 
+    // === Baud ===
+    int getBaud(BaudRate* brs) const;
+    void setBaud(BaudRate br) const; // Only once at time
+
+    // === ReturnDelayTime ===
+    int getReturnDelayTime(int* values) const;
+    void setReturnDelayTime(const int* values, int number) const;
+
+    // === CwAngleLimit ===
+    int getCwAngleLimit(int* values) const;
+    void setCwAngleLimit(const int* values, int number) const;
+
+    // === CcwAngleLimit ===
+    int getCcwAngleLimit(int* values) const;
+    void setCcwAngleLimit(const int* values, int number) const;
+
+    // === ControlMode ===
+    int getControlMode(int* values) const;
+    void setControlMode(const int* values, int number) const;
+
+    // === LimitTemperature ===
+    int getLimitTemperature(int* values) const;
+    void setLimitTemperature(const int* values, int number) const;
+
+    // === DownLimitVoltage ===
+    int getDownLimitVoltage(int* values) const;
+    void setDownLimitVoltage(const int* values, int number) const;
+
+    // === UpLimitVoltage ===
+    int getUpLimitVoltage(int* values) const;
+    void setUpLimitVoltage(const int* values, int number) const;
+
+    // === MaxTorque ===
+    int getMaxTorque(int* values) const;
+    void setMaxTorque(const int* values, int number) const;
+
+    // === ReturnLevel ===
+    int getReturnLevel(int* values) const;
+    void setReturnLevel(const int* values, int number) const;
+
+    // === AlarmShutdown ===
+    int getAlarmShutdown(int* values) const;
+    void setAlarmShutdown(const int* values, int number) const;
+
+    // === TorqueEnable ===
+    int getTorqueEnable(int* values) const;
+    void setTorqueEnable(const int* values, int number) const;
+
+    // === Led ===
+    int getLed(int* values) const;
+    void setLed(const int* values, int number) const;
+
+    // === Dgain ===
+    int getDgain(int* values) const;
+    void setDgain(const int* values, int number) const;
+
+    // === Igain ===
+    int getIgain(int* values) const;
+    void setIgain(const int* values, int number) const;
+
+    // === Pgain ===
+    int getPgain(int* values) const;
+    void setPgain(const int* values, int number) const;
+
+    // === GoalPosition ===
+    int getGoalPosition(int* positions) const;
+    void setGoalPosition(const int* positions, int number) const;
+
+    // === GoalSpeed ===
+    int getGoalSpeed(int* speeds) const;
+    void setGoalSpeed(const int* speeds, int number) const;
+
+    // === GoalTorque ===
+    int getGoalTorque(int* values) const;
+    void setGoalTorque(const int* values, int number) const;
+
+    // === PresentPosition ===
+    int getPresentPosition(int* values) const;
+    void setPresentPosition(const int* values, int number) const;
+
+    // === PresentSpeed ===
+    int getPresentSpeed(int* values) const;
+    void setPresentSpeed(const int* values, int number) const;
+
+    // === PresentLoad ===
+    int getPresentLoad(int* values) const;
+    void setPresentLoad(const int* values, int number) const;
+
+    // === PresentVoltage ===
+    int getPresentVoltage(int* values) const;
+    void setPresentVoltage(const int* values, int number) const;
+
+    // === PresentTemperature ===
+    int getPresentTemperature(int* values) const;
+    void setPresentTemperature(const int* values, int number) const;
+
+    // === RegisteredInstruction ===
+    int getRegisteredInstruction(int* values) const;
+    void setRegisteredInstruction(const int* values, int number) const;
+
+    // === Moving ===
+    int getMoving(int* values) const;
+    void setMoving(const int* values, int number) const;
+
+    // === HardwareError ===
+    int getHardwareError(int* values) const;
+    void setHardwareError(const int* values, int number) const;
+
+    // === Punch ===
+    int getPunch(int* values) const;
+    void setPunch(const int* values, int number) const;
 };
 
 } // xl320

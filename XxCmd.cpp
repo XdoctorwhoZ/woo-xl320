@@ -1,17 +1,46 @@
+// Woo
 #include "XxCmd.hpp"
 
 /* ============================================================================
  *
  * */
 const char* XxCmd::Names[Value::Total] = {
-    "XBAUD"       ,
-    "PING"        ,
-    "SELECT"      ,
-    "BAUD"        ,
-    "GPOS"        ,
-    "GSPEED"      ,
-    "LED"         ,
-    "TORQUE"      ,
+    "XBAUD"             , // XBaud                       
+    "PING"              , // Ping                        
+    "SELECT"            , // Select                      
+
+    "MODEL"             , // ModelNumber                 
+    "VERSION"           , // Version                     
+    "ID"                , // Id                          
+    "BAUD"              , // Baud                        
+    "RDT"               , // ReturnDelayTime             
+    "ANG_LIM_MIN"       , // CwAngleLimit                
+    "ANG_LIM_MAX"       , // CcwAngleLimit               
+    "CTRL_MODE"         , // ControlMode                 
+    "TEMP_LIM"          , // LimitTemperature            
+    "VOLT_LIMIT_D"      , // DownLimitVoltage            
+    "VOLT_LIMIT_U"      , // UpLimitVoltage              
+    "MAX_TORQUE"        , // MaxTorque                   
+    "RET_LEVEL"         , // ReturnLevel                 
+    "ALARM"             , // AlarmShutdown               
+
+    "TORQUE_ENABLE"     , // TorqueEnable                
+    "LED"               , // Led                         
+    "DGAIN"             , // Dgain                       
+    "IGAIN"             , // Igain                       
+    "PGAIN"             , // Pgain                       
+    "GPOS"              , // GoalPosition                
+    "GSPEED"            , // GoalSpeed                   
+    "GTORQUE"           , // GoalTorque                  
+    "PPOS"              , // PresentPosition             
+    "PSPEED"            , // PresentSpeed                
+    "PLOAD"             , // PresentLoad                 
+    "PVOLT"             , // PresentVoltage              
+    "PTEMP"             , // PresentTemperature          
+    "REG_INSTRU"        , // RegisteredInstruction       
+    "MOVING"            , // Moving                      
+    "HARDWARE_ERROR"    , // HardwareError               
+    "PUNCH"             , // Punch                       
 };
 
 /* ============================================================================

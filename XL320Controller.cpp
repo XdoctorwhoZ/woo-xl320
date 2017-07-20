@@ -160,11 +160,6 @@ int Controller::readNextPacket(byte* buffer, int msize)
     {
         byte c = mXlSerial->read();
 
-        // Serial.print("state : ");
-        // Serial.print( state, DEC);
-        // Serial.print(" : ");
-        // Serial.println( c, HEX);
-
         switch(state)
         {
             case 0: {
@@ -212,6 +207,83 @@ int Controller::readNextPacket(byte* buffer, int msize)
 /* ============================================================================
  *
  * */
+void Controller::dropRxPackets()
+{
+    // RX buffer
+    const int rxBufferSize = 32;
+    byte rxBuffer[rxBufferSize];
+
+    // Read packet and drop them until there is no more
+    int size = 0;
+    while(size != -42)
+    {
+        size = readNextPacket(rxBuffer, rxBufferSize);
+    }
+}
+
+/* ============================================================================
+ *
+ * */
+int Controller::readValuesFromRxPackets(int* values)
+{
+    // RX buffer
+    const int rxBufferSize = 32;
+    byte rxBuffer[rxBufferSize];
+
+    // Check rx buffer
+    int size = 0;
+    int number = mNumberOfSelectedServo;
+    while(size != -42)
+    {
+        // Read one packet only
+        size = readNextPacket(rxBuffer, rxBufferSize);
+        if(size == -42) {
+            break;
+        }
+
+        // Prepare packet parsing
+        Packet pack(rxBuffer, size);
+
+        // If the packet is an return status only (else it is the out Tx...)
+        if(pack.getInstruction() == InsStatus)
+        {
+            int value = 0;
+
+            const int pcount = pack.getParameterCount();
+
+            switch(pcount)
+            {
+                case 2:
+                    // 0 -> error reg
+                    value = (int) pack.getParameter(1);
+                    break;
+                case 3:
+                    // 0 -> error reg
+                    value = (int) DXL_MAKEWORD(pack.getParameter(1), pack.getParameter(2));
+                    break;
+                default:
+                    value = 0;
+            }
+
+            const int id = pack.getId();
+            for(int i=0 ; i<mNumberOfSelectedServo ; i++)
+            {
+                if( (int)mSelectedServoIds[i] == id )
+                {
+                    values[i] = value;
+                }
+            }
+
+            number--;
+        }
+    }
+
+    return number;
+}
+
+/* ============================================================================
+ *
+ * */
 void Controller::sendPingPacket()
 {
     const int params_size = 0;
@@ -223,6 +295,37 @@ void Controller::sendPingPacket()
     // Build packet
     Packet pack(buffer, bsize);
     pack.build(Constant::BroadcastId, InsPing, params_size);
+
+    // Send packet
+    mXlSerial->write(buffer,bsize);
+    mXlSerial->flush();
+}
+
+/* ============================================================================
+ *
+ * */
+void Controller::sendReadPacket(byte id, ControlIndex ci) const
+{
+    // addr = 2 + len = 2
+    const int params_size = 4;
+    const int bsize = Packet::ComputeBufferSize(params_size);
+
+    // buffers
+    byte buffer[bsize];
+    byte params[params_size];
+
+    Serial.print("r size:");
+    Serial.println(ControlTable[ci].size, DEC);
+
+    // params
+    params[0] = DXL_LOBYTE(ControlTable[ci].addr);
+    params[1] = DXL_HIBYTE(ControlTable[ci].addr);
+    params[2] = DXL_LOBYTE(ControlTable[ci].size);
+    params[3] = DXL_HIBYTE(ControlTable[ci].size);
+
+    // Build packet
+    Packet pack(buffer, bsize);
+    pack.build(id, InsRead, params_size, params);
 
     // Send packet
     mXlSerial->write(buffer,bsize);
@@ -267,7 +370,7 @@ void Controller::sendWritePacket(byte id, ControlIndex ci, int value) const
 /* ============================================================================
  *
  * */
-int Controller::ping(byte* ids)
+int Controller::ping(int* ids)
 {
     // RX buffer
     const int rxBufferSize = 32;
@@ -297,7 +400,7 @@ int Controller::ping(byte* ids)
         #endif
 
         if(pack.getInstruction() == InsStatus) {
-            ids[number] = pack.getId();
+            ids[number] = (int) pack.getId();
             number++;
 
             #ifdef XL320Controller_DEBUG
@@ -313,7 +416,7 @@ int Controller::ping(byte* ids)
 /* ============================================================================
  *
  * */
-void Controller::getGpos(int* positions) const
+int Controller::getNumber(int* values) const
 {
 
 }
@@ -321,20 +424,332 @@ void Controller::getGpos(int* positions) const
 /* ============================================================================
  *
  * */
-void Controller::setGpos(const int* positions, int number) const
+int Controller::getVersion(int* values) const
 {
 
+}
+
+/* ============================================================================
+ *
+ * */
+void Controller::setId(byte id) const
+{
+    if(mNumberOfSelectedServo >= 1)
+    {
+        sendWritePacket(mSelectedServoIds[0], CiId, id);
+        dropRxPackets();
+    }
+}
+
+/* ============================================================================
+ *
+ * */
+int Controller::getBaud(BaudRate* brs) const
+{
+    int values[mNumberOfSelectedServo];
+    
+    sendReadPacket(mSelectedServoIds[0], CiBaudRate);
+    delay(50);
+    readValuesFromRxPackets(values);
+
+    for(int i=0 ; i<mNumberOfSelectedServo ; i++)
+        brs[i] = (BaudRate)values[i];
+}
+
+/* ============================================================================
+ *
+ * */
+void Controller::setBaud(BaudRate br) const
+{
+    if(mNumberOfSelectedServo >= 1)
+    {
+        sendWritePacket(mSelectedServoIds[0], CiBaudRate, (int)br);
+        dropRxPackets();
+    }
+}
+
+/* ============================================================================
+ *
+ * */
+int Controller::getReturnDelayTime(int* values) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+void Controller::setReturnDelayTime(const int* values, int number) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+int Controller::getCwAngleLimit(int* values) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+void Controller::setCwAngleLimit(const int* values, int number) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+int Controller::getCcwAngleLimit(int* values) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+void Controller::setCcwAngleLimit(const int* values, int number) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+int Controller::getControlMode(int* values) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+void Controller::setControlMode(const int* values, int number) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+int Controller::getLimitTemperature(int* values) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+void Controller::setLimitTemperature(const int* values, int number) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+int Controller::getDownLimitVoltage(int* values) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+void Controller::setDownLimitVoltage(const int* values, int number) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+int Controller::getUpLimitVoltage(int* values) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+void Controller::setUpLimitVoltage(const int* values, int number) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+int Controller::getMaxTorque(int* values) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+void Controller::setMaxTorque(const int* values, int number) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+int Controller::getReturnLevel(int* values) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+void Controller::setReturnLevel(const int* values, int number) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+int Controller::getAlarmShutdown(int* values) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+void Controller::setAlarmShutdown(const int* values, int number) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+int Controller::getTorqueEnable(int* values) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+void Controller::setTorqueEnable(const int* values, int number) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+int Controller::getLed(int* values) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+void Controller::setLed(const int* values, int number) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+int Controller::getDgain(int* values) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+void Controller::setDgain(const int* values, int number) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+int Controller::getIgain(int* values) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+void Controller::setIgain(const int* values, int number) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+int Controller::getPgain(int* values) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+void Controller::setPgain(const int* values, int number) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+int Controller::getGoalPosition(int* positions) const
+{
+
+}
+/* ============================================================================
+ *
+ * */
+void Controller::setGoalPosition(const int* positions, int number) const
+{
+    // if(mNumberOfSelectedServo == 1)
+    //     sendWritePacket(mSelectedServoIds[0], CiGoalPosition, positions[0]);
+}
+
+/* ============================================================================
+ *
+ * */
+int Controller::getGoalSpeed(int* speeds) const
+{
+// int Controller::getGpos(int* positions) const
+// {
+//     sendReadPacket(mSelectedServoIds[0], CiGoalPosition);
+//     delay(50);
+//     readValuesFromRxPackets(positions);
+// }
+}
+
+/* ============================================================================
+ *
+ * */
+void Controller::setGoalSpeed(const int* speeds, int number) const
+{
     if(mNumberOfSelectedServo == 1)
-        sendWritePacket(mSelectedServoIds[0], CiGoalPosition, positions[0]);
-
-
-
+        sendWritePacket(mSelectedServoIds[0], CiGoalSpeed, speeds[0]);
 }
 
 /* ============================================================================
  *
  * */
-void Controller::getGspeed(int* speeds) const
+int Controller::getGoalTorque(int* values) const
 {
 
 }
@@ -342,7 +757,150 @@ void Controller::getGspeed(int* speeds) const
 /* ============================================================================
  *
  * */
-void Controller::setGspeed(const int* speeds) const
+void Controller::setGoalTorque(const int* values, int number) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+int Controller::getPresentPosition(int* values) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+void Controller::setPresentPosition(const int* values, int number) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+int Controller::getPresentSpeed(int* values) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+void Controller::setPresentSpeed(const int* values, int number) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+int Controller::getPresentLoad(int* values) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+void Controller::setPresentLoad(const int* values, int number) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+int Controller::getPresentVoltage(int* values) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+void Controller::setPresentVoltage(const int* values, int number) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+int Controller::getPresentTemperature(int* values) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+void Controller::setPresentTemperature(const int* values, int number) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+int Controller::getRegisteredInstruction(int* values) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+void Controller::setRegisteredInstruction(const int* values, int number) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+int Controller::getMoving(int* values) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+void Controller::setMoving(const int* values, int number) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+int Controller::getHardwareError(int* values) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+void Controller::setHardwareError(const int* values, int number) const
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+int Controller::getPunch(int* values) const
+{
+
+}
+/* ============================================================================
+ *
+ * */
+void Controller::setPunch(const int* values, int number) const
 {
 
 }
