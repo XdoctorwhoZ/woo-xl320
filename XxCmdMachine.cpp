@@ -51,7 +51,7 @@ void XxCmdMachine::parse(const char* command)
     // Check XX
     for (int i=0 ; i<2 ; i++)
     {
-        if (*ptr != 'X') { return syntaxError("start XX"); }
+        if (*ptr != 'X') { syntaxError("start XX"); return; }
         ptr++;
     }
 
@@ -72,7 +72,7 @@ void XxCmdMachine::parse(const char* command)
 
         // Check if this is a getter of setters function
         if (*ptr != '?' && *ptr != '=') {
-            return syntaxError("need ? or =");
+            syntaxError("need ? or ="); return;
         }
 
         // Getter command
@@ -117,7 +117,7 @@ void XxCmdMachine::parse(const char* command)
                 case XxCmd::HardwareError           : cmdHardwareErrorGetter();         break;
                 case XxCmd::Punch                   : cmdPunchGetter();                 break;
 
-                default                             : return syntaxError("unknown");
+                default                             : syntaxError("unknown");
             }
         }
         // Setter command XX+CMD=...
@@ -170,9 +170,9 @@ void XxCmdMachine::parse(const char* command)
     }
     else // case XX\r\n
     {
-        if (*ptr != '\r') { return syntaxError("end \\r\\n"); }
+        if (*ptr != '\r') { syntaxError("end \\r\\n"); return; }
         ptr++;
-        if (*ptr != '\n') { return syntaxError("end \\r\\n"); }
+        if (*ptr != '\n') { syntaxError("end \\r\\n"); return; }
         ptr++;
         reply("OK\r\n");
     }
@@ -186,6 +186,28 @@ void XxCmdMachine::addCmdChar(char c)
     if( (mCmdPtr-mCmdBuffer) < MaxCmdSize )
     {
         *mCmdPtr = c; mCmdPtr++;
+    }
+}
+
+/* ============================================================================
+ *
+ * */
+void XxCmdMachine::checkWarning(int left)
+{
+    if(left) {
+        String msg("#Partial reply: ");
+        msg += left;
+        msg += " servo does not respond\r\n";
+        mStream->write(msg.c_str());
+        mStream->flush();
+    }
+
+    if(mController.getHwError()) {
+        String msg("#HwError:n=");
+        msg += (int) mController.getHwError();
+        msg += ", last=" + Controller::ErrorToString(mController.getLastError());
+        mStream->write(msg.c_str());
+        mStream->flush();
     }
 }
 
@@ -218,6 +240,17 @@ void XxCmdMachine::replyGetterWithIntList(const char* cmd, const int* list, int 
 /* ============================================================================
  *
  * */
+void XxCmdMachine::replyGetterWithIntList(XxCmd::Value command, const int* list, int size)
+{
+    String cmd("+");
+    cmd += XxCmd::Names[command];
+    cmd += ':';
+    replyGetterWithIntList(cmd.c_str(), list, size);
+}
+
+/* ============================================================================
+ *
+ * */
 void XxCmdMachine::cmdXbaudGetter()
 {
     replyGetterWithParam("+XBAUD:", mController.getXlBaudRateString().c_str());
@@ -240,7 +273,6 @@ void XxCmdMachine::cmdSelectGetter()
 {
     String msg = "+SELECT:" + mController.getSelectedServoString() + "\r\nOK\r\n";
     reply(msg.c_str());
-    return 0;
 }
 
 /* ============================================================================
@@ -271,7 +303,10 @@ void XxCmdMachine::cmdGposGetter()
  * */
 void XxCmdMachine::cmdModelNumberGetter()
 {
-
+    const int num = mController.getNumberOfSelectedServo();
+    int values[num];
+    int left = mController.getNumber(values);
+    replyGetterWithIntList(XxCmd::ModelNumber, values, num);
 }   
 
 /* ============================================================================
@@ -557,7 +592,8 @@ void XxCmdMachine::cmdXbaudSetter(const char* args)
         br = Br1Mbps;
     }
     else {
-        return 50;
+        // manage error here
+        // return 50;
     }
 
     mController.setXlBaudRate(br);
@@ -598,7 +634,6 @@ void XxCmdMachine::cmdSelectSetter(const char* args)
 
     String msg = "OK" + mController.getSelectedServoString() + "\r\n";
     reply(msg.c_str());
-    return 0;
 }
 
 /* ============================================================================
@@ -657,7 +692,8 @@ void XxCmdMachine::cmdBaudSetter(const char* args)
         br = Br1Mbps;
     }
     else {
-        return 50;
+        // manage error here
+        // return 50;
     }
 
     mController.setBaud(br);

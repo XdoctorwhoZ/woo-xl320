@@ -26,8 +26,14 @@ public:
     typedef HardwareSerial XlSerial;
 
     //! Maximal number of servo xl-320 selectable at once
-    static constexpr byte MaxServoSelectable = 8;
+    static constexpr int MaxServoSelectable = 8;
 
+    //! Size of the Rx buffer, to extends serial buffer
+    static constexpr int RxBufferSize = 128;
+
+    //! Flag to tell that the buffer is empty
+    static constexpr int RxBufferEmpty = -42;
+    
     //! Data about control table
     //!
     static const ControlReg ControlTable[CiTotal];
@@ -42,11 +48,37 @@ private:
     //! Current baudrate of mXlSerial
     BaudRate mXlSerialBaudRate;
 
+
+
     //! Number of selected servo (size of useful id in mSelectedServoIds)
     byte mNumberOfSelectedServo;
 
     //! Ids of the selected servo
     byte mSelectedServoIds[MaxServoSelectable];
+
+
+
+    //! Current read pointer on the rx buffer
+    //!
+    byte* mRxPtr;
+
+    //! Number of bytes in the RxBuffer
+    //!
+    short mRxBytes;
+
+    //! Buffer for incoming packets
+    //!
+    byte mRxBuffer[RxBufferSize];
+
+
+
+    //! Number of Hardware error, read from status packets
+    //!
+    byte mHwError;
+
+    //! Store the last error
+    //!
+    ErrorData mLastError;
 
 public:
     
@@ -92,16 +124,32 @@ public:
     //!
     void selectServo(const byte* ids, byte number = 1);
 
+    // === Hardware error ===
+
+    byte getHwError() const { return mHwError; }
+    const ErrorData& getLastError() const { return mLastError; }
+    static String ErrorToString(const ErrorData& err);
+
     // === Packet helpers ===
+
+    //! Read data from serial during usTimeout micro-secondes
+    //!
+    int receiveData(unsigned long usTimeout);
+
+    //! Get the next packet in the RxBuffer
+    //! Return false if no packet found, else true
+    //!
+    int getNextPacket(Packet& pack);
+
 
     //! Read a packet from xl serial, store data in buffer and return number of byte read
     //! msize is the max size of the buffer
     //!
-    int readNextPacket(byte* buffer, int msize);
+    int readNextPacket(byte* buffer, int msize); // Deprecated
 
     //! Drop all Rx Packets
     //!
-    void dropRxPackets();
+    void dropRxPackets(); // Deprecated
 
     //! Read incoming packets and fill values table.
     //! values size must be equal to mNumberOfSelectedServo
@@ -112,13 +160,21 @@ public:
     //!
     void sendPingPacket();
 
-    //! To send packet to reg in 1 reg of 1 servo
+    //! To send packet to read 1 reg of 1 servo
     //!
     void sendReadPacket(byte id, ControlIndex ci) const;
 
-    //! To send packet to write in 1 reg of 1 servo
+    //! To send packet to reg 1 reg of n servo
+    //!
+    void sendSyncReadPacket(ControlIndex ci) const;
+
+    //! To send packet to write 1 reg of 1 servo
     //!
     void sendWritePacket(byte id, ControlIndex ci, int value) const;
+
+    //! To send packet to write 1 reg of n servo
+    //!
+    void sendSyncWritePacket(ControlIndex ci, const int* value, int num) const;
 
     // === Ping ===
 
@@ -127,7 +183,6 @@ public:
     //!
     int ping(int* ids = 0);
 
-
     // === ModelNumber ===
     int getNumber(int* values) const;
 
@@ -135,7 +190,7 @@ public:
     int getVersion(int* values) const;
 
     // === Id ===
-    void setId(byte id) const; // Only once at time
+    void setId(byte id); // Only once at time
 
     // === Baud ===
     int getBaud(BaudRate* brs) const;

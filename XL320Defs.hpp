@@ -101,13 +101,21 @@ enum ErrorNumber
                                     // When you attempt to write a value in the ROM domain while in a state of Torque Enable(ROM Lock)
 };
 
+//! To store an hardware error and the id of the servo
+//!
+struct ErrorData
+{
+    byte id;
+    ErrorNumber data;
+};
+
 //! Return value for the function that validate packet structure
 //!
 enum PacketState
 {
-    PsValid       ,
-    PsBadHeader   ,
-    PsBadCrc      ,
+    PsValid       = 0x1 ,
+    PsBadHeader   = 0x2 ,
+    PsBadCrc      = 0x3 ,
 };
 
 //! Constant value definitions

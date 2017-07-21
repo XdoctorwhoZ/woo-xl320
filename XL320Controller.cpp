@@ -5,7 +5,7 @@
 using namespace xl320;
 
 // Uncomment to debug
-// #define XL320Controller_DEBUG
+#define XL320Controller_DEBUG
 
 /* ============================================================================
  *
@@ -147,6 +147,120 @@ void Controller::selectServo(const byte* ids, byte number)
 /* ============================================================================
  *
  * */
+String Controller::ErrorToString(const ErrorData& err)
+{
+    String str(err.id);
+    switch(err.data)
+    {
+        case EnResultFail       : str += "-Result Fail";         break;
+        case EnInstructionError : str += "-Instruction Error";   break;
+        case EnCRCError         : str += "-CRC Error";           break;
+        case EnDataRangeError   : str += "-Data Range Error";    break;
+        case EnDataLengthError  : str += "-Data Length Error";   break;
+        case EnDataLimitError   : str += "-Data Limit Error";    break;
+        case EnAccessError      : str += "-Access Error";        break;
+    }
+    return str;
+}
+
+/* ============================================================================
+ *
+ * */
+int Controller::receiveData(unsigned long usTimeout)
+{
+    // Reset
+    mRxBytes = 0;
+    mRxPtr = mRxBuffer;
+
+    int rsize = 0;
+    unsigned long startTime = micros();
+
+#ifdef XL320Controller_DEBUG
+    Serial.print("#ReceiveData:t=");
+    Serial.print(usTimeout, DEC);
+    Serial.print("us... ");
+#endif // XL320Controller_DEBUG
+
+    // While not timeout and buffer not full
+    while( (abs(micros() - startTime) <= usTimeout) && (mRxBytes < RxBufferSize) )
+    {
+        while( (rsize = mXlSerial->available()) > 0 )
+        {
+            // Check that rx buffer is not full
+            if( (mRxBytes + rsize) >= RxBufferSize )
+            {
+                rsize = RxBufferSize - mRxBytes;
+            }
+
+            // Read those bytes
+            mRxBytes += mXlSerial->readBytes(mRxBuffer + mRxBytes, rsize);
+        }
+    }
+
+#ifdef XL320Controller_DEBUG
+    Serial.print("size=");
+    Serial.println(mRxBytes, DEC);
+#endif // XL320Controller_DEBUG
+
+    return mRxBytes;
+}
+
+/* ============================================================================
+ *
+ * */
+int Controller::getNextPacket(Packet& pack)
+{
+    byte size = 0;
+    byte* packStart = mRxPtr;
+    int left = (int)(mRxBytes-(mRxPtr-mRxBuffer));
+
+#ifdef XL320Controller_DEBUG
+    Serial.print("#RxBuffer:left=");
+    Serial.println(left, DEC);
+#endif // XL320Controller_DEBUG
+
+    // Check if there are some data left
+    if(left <= 0) { return RxBufferEmpty; }
+
+    // Function to safely increment size
+    auto upSize = [&size, this](int plus)
+    {
+        if( (size+plus) <= this->mRxBytes ) { size += plus; return true; }
+        else { return false; }
+    };
+
+    // Check packet
+    if( mRxPtr[size] != (byte)0xFF ) return -1; // 0
+    if(!upSize(1)) { return RxBufferEmpty; }
+    if( mRxPtr[size] != (byte)0xFF ) return -2; // 1
+    if(!upSize(1)) { return RxBufferEmpty; }
+    if( mRxPtr[size] != (byte)0xFD ) return -2; // 2
+    if(!upSize(3)) { return RxBufferEmpty; }
+    byte lenL = mRxPtr[size]; // 5
+    if(!upSize(1)) { return RxBufferEmpty; }
+    byte lenH = mRxPtr[size]; // 6
+    if(!upSize(1)) { return RxBufferEmpty; }
+    int len = DXL_MAKEWORD(lenL, lenH);
+    if(!upSize(len)) { return RxBufferEmpty; }
+
+    // Prepare return value
+    mRxPtr += size;
+    pack = Packet(packStart, size);
+
+#ifdef XL320Controller_DEBUG
+    Serial.print("#New packet:size=");
+    Serial.print(size, DEC);
+    Serial.print(", data=");
+    Serial.println(pack.toString().c_str());
+#endif // XL320Controller_DEBUG
+
+    return 0;
+}
+
+
+/* ============================================================================
+ *
+ * */
 int Controller::readNextPacket(byte* buffer, int msize)
 {
     byte len_l;
@@ -228,31 +342,22 @@ void Controller::dropRxPackets()
  * */
 int Controller::readValuesFromRxPackets(int* values)
 {
-    // RX buffer
-    const int rxBufferSize = 32;
-    byte rxBuffer[rxBufferSize];
+    // Read data from serial 50ms
+    receiveData(mNumberOfSelectedServo*1000);
 
-    // Check rx buffer
-    int size = 0;
+    // Parse each packet
+    Packet pack;
+    int sts;
     int number = mNumberOfSelectedServo;
-    while(size != -42)
+    while( (sts=getNextPacket(pack)) != RxBufferEmpty )
     {
-        // Read one packet only
-        size = readNextPacket(rxBuffer, rxBufferSize);
-        if(size == -42) {
-            break;
-        }
-
-        // Prepare packet parsing
-        Packet pack(rxBuffer, size);
-
-        // If the packet is an return status only (else it is the out Tx...)
+        if(sts != 0) continue;
+        // Check that it is a status packet
         if(pack.getInstruction() == InsStatus)
         {
             int value = 0;
 
             const int pcount = pack.getParameterCount();
-
             switch(pcount)
             {
                 case 2:
@@ -278,9 +383,64 @@ int Controller::readValuesFromRxPackets(int* values)
 
             number--;
         }
+        // else drop packet (it is our TX)
     }
-
     return number;
+
+
+    // // RX buffer
+    // const int rxBufferSize = 32;
+    // byte rxBuffer[rxBufferSize];
+
+    // // Check rx buffer
+    // int size = 0;
+    // int number = mNumberOfSelectedServo;
+    // while(size != -42)
+    // {
+    //     // Read one packet only
+    //     size = readNextPacket(rxBuffer, rxBufferSize);
+    //     if(size == -42) {
+    //         break;
+    //     }
+
+    //     // Prepare packet parsing
+    //     Packet pack(rxBuffer, size);
+
+    //     // If the packet is an return status only (else it is the out Tx...)
+    //     if(pack.getInstruction() == InsStatus)
+    //     {
+    //         int value = 0;
+
+    //         const int pcount = pack.getParameterCount();
+
+    //         switch(pcount)
+    //         {
+    //             case 2:
+    //                 // 0 -> error reg
+    //                 value = (int) pack.getParameter(1);
+    //                 break;
+    //             case 3:
+    //                 // 0 -> error reg
+    //                 value = (int) DXL_MAKEWORD(pack.getParameter(1), pack.getParameter(2));
+    //                 break;
+    //             default:
+    //                 value = 0;
+    //         }
+
+    //         const int id = pack.getId();
+    //         for(int i=0 ; i<mNumberOfSelectedServo ; i++)
+    //         {
+    //             if( (int)mSelectedServoIds[i] == id )
+    //             {
+    //                 values[i] = value;
+    //             }
+    //         }
+
+    //         number--;
+    //     }
+    // }
+
+    // return number;
 }
 
 /* ============================================================================
@@ -297,6 +457,13 @@ void Controller::sendPingPacket()
     // Build packet
     Packet pack(buffer, bsize);
     pack.build(Constant::BroadcastId, InsPing, params_size);
+
+#ifdef XL320Controller_DEBUG
+    Serial.print("#SendPing:size=");
+    Serial.print(bsize, DEC);
+    Serial.print(", data=");
+    Serial.println(pack.toString().c_str());
+#endif // XL320Controller_DEBUG
 
     // Send packet
     mXlSerial->write(buffer,bsize);
@@ -316,9 +483,6 @@ void Controller::sendReadPacket(byte id, ControlIndex ci) const
     byte buffer[bsize];
     byte params[params_size];
 
-    Serial.print("r size:");
-    Serial.println(ControlTable[ci].size, DEC);
-
     // params
     params[0] = DXL_LOBYTE(ControlTable[ci].addr);
     params[1] = DXL_HIBYTE(ControlTable[ci].addr);
@@ -328,6 +492,52 @@ void Controller::sendReadPacket(byte id, ControlIndex ci) const
     // Build packet
     Packet pack(buffer, bsize);
     pack.build(id, InsRead, params_size, params);
+
+#ifdef XL320Controller_DEBUG
+    Serial.print("#SendReadPack:size=");
+    Serial.print(bsize, DEC);
+    Serial.print(", data=");
+    Serial.println(pack.toString().c_str());
+#endif // XL320Controller_DEBUG
+
+    // Send packet
+    mXlSerial->write(buffer,bsize);
+    mXlSerial->flush();
+}
+
+/* ============================================================================
+ *
+ * */
+void Controller::sendSyncReadPacket(ControlIndex ci) const
+{
+    // addr = 2 + len = 2
+    const int params_size = 4 + mNumberOfSelectedServo;
+    const int bsize = Packet::ComputeBufferSize(params_size);
+
+    // buffers
+    byte buffer[bsize];
+    byte params[params_size];
+
+    // params
+    params[0] = DXL_LOBYTE(ControlTable[ci].addr);
+    params[1] = DXL_HIBYTE(ControlTable[ci].addr);
+    params[2] = DXL_LOBYTE(ControlTable[ci].size);
+    params[3] = DXL_HIBYTE(ControlTable[ci].size);
+    for(int i=0 ; i<mNumberOfSelectedServo ; i++)
+    {
+        params[3+i] = mSelectedServoIds[i];
+    }
+
+    // Build packet
+    Packet pack(buffer, bsize);
+    pack.build(Constant::BroadcastId, InsSyncRead, params_size, params);
+
+#ifdef XL320Controller_DEBUG
+    Serial.print("#SendSyncReadPack:size=");
+    Serial.print(bsize, DEC);
+    Serial.print(", data=");
+    Serial.println(pack.toString().c_str());
+#endif // XL320Controller_DEBUG
 
     // Send packet
     mXlSerial->write(buffer,bsize);
@@ -364,6 +574,64 @@ void Controller::sendWritePacket(byte id, ControlIndex ci, int value) const
     Packet pack(buffer, bsize);
     pack.build(id, InsWrite, params_size, params);
 
+#ifdef XL320Controller_DEBUG
+    Serial.print("#SendWritePack:size=");
+    Serial.print(bsize, DEC);
+    Serial.print(", data=");
+    Serial.println(pack.toString().c_str());
+#endif // XL320Controller_DEBUG
+
+    // Send packet
+    mXlSerial->write(buffer,bsize);
+    mXlSerial->flush();
+}
+
+/* ============================================================================
+ *
+ * */
+void Controller::sendSyncWritePacket(ControlIndex ci, const int* values, int num) const
+{
+    // addr = 2 + size = 2 + n*(1+sizeof(data))
+    const int params_size = 4 + ( num * ( 1 + ControlTable[ci].size ) );
+    const int bsize = Packet::ComputeBufferSize(params_size);
+
+    // buffers
+    byte buffer[bsize];
+    byte params[params_size];
+
+    // params
+    params[0] = DXL_LOBYTE(ControlTable[ci].addr);
+    params[1] = DXL_HIBYTE(ControlTable[ci].addr);
+    params[2] = DXL_LOBYTE(ControlTable[ci].size);
+    params[3] = DXL_HIBYTE(ControlTable[ci].size);
+    int shift = 0;
+    for(int v=0 ; v<num ; v++)
+    {
+        params[4 + shift + 0] = (byte) mSelectedServoIds[v];
+        if( ControlTable[ci].size == 1 )
+        {
+            params[4 + shift + 1] = DXL_LOBYTE(values[v]);
+            shift += 2;
+        }
+        else if( ControlTable[ci].size == 2 )
+        {
+            params[4 + shift + 1] = DXL_LOBYTE(values[v]);
+            params[4 + shift + 2] = DXL_HIBYTE(values[v]);
+            shift += 3;
+        }
+    }
+
+    // Build packet
+    Packet pack(buffer, bsize);
+    pack.build(Constant::BroadcastId, InsSyncWrite, params_size, params);
+
+#ifdef XL320Controller_DEBUG
+    Serial.print("#SendSyncWritePack:size=");
+    Serial.print(bsize, DEC);
+    Serial.print(", data=");
+    Serial.println(pack.toString().c_str());
+#endif // XL320Controller_DEBUG
+
     // Send packet
     mXlSerial->write(buffer,bsize);
     mXlSerial->flush();
@@ -374,45 +642,61 @@ void Controller::sendWritePacket(byte id, ControlIndex ci, int value) const
  * */
 int Controller::ping(int* ids)
 {
-    // RX buffer
-    const int rxBufferSize = 32;
-    byte rxBuffer[rxBufferSize];
-
     // Broadcast ping
     sendPingPacket();
-    
-    // Wait for answers 200us should be large
-    delay(200);
 
-    // Check rx buffer
-    int size = 0;
+    // Read data from serial 50ms
+    receiveData(50000);
+
+    // Parse each packet
+    Packet pack;
+    int sts;
     int number = 0;
-    while(size != -42)
+    while( (sts=getNextPacket(pack)) != RxBufferEmpty )
     {
-        size = readNextPacket(rxBuffer, rxBufferSize);
-        if(size == -42) {
-            break;
-        }
-
-        Packet pack(rxBuffer, size);
-
-        #ifdef XL320Controller_DEBUG
-        Serial.print("pack : ");
-        Serial.println(size, DEC);
-        #endif
-
-        if(pack.getInstruction() == InsStatus) {
+        if(sts != 0) continue;
+        // Check that it is a status packet
+        if(pack.getInstruction() == InsStatus)
+        {
             ids[number] = (int) pack.getId();
             number++;
-
-            #ifdef XL320Controller_DEBUG
-            Serial.print("new : ");
-            Serial.println(number, DEC);
-            #endif
         }
+        // else drop packet (it is our TX)
     }
-
     return number;
+
+    // // RX buffer
+    // const int rxBufferSize = 32;
+    // byte rxBuffer[rxBufferSize];
+
+    // // Check rx buffer
+    // int size = 0;
+    // int number = 0;
+    // while(size != -42)
+    // {
+    //     size = readNextPacket(rxBuffer, rxBufferSize);
+    //     if(size == -42) {
+    //         break;
+    //     }
+
+    //     Packet pack(rxBuffer, size);
+
+    //     #ifdef XL320Controller_DEBUG
+    //     Serial.print("pack : ");
+    //     Serial.println(size, DEC);
+    //     #endif
+
+    //     if(pack.getInstruction() == InsStatus) {
+    //         ids[number] = (int) pack.getId();
+    //         number++;
+
+    //         #ifdef XL320Controller_DEBUG
+    //         Serial.print("new : ");
+    //         Serial.println(number, DEC);
+    //         #endif
+    //     }
+    // }
+
 }
 
 /* ============================================================================
@@ -434,12 +718,11 @@ int Controller::getVersion(int* values) const
 /* ============================================================================
  *
  * */
-void Controller::setId(byte id) const
+void Controller::setId(byte id)
 {
-    if(mNumberOfSelectedServo >= 1)
-    {
+    if(mNumberOfSelectedServo >= 1) {
         sendWritePacket(mSelectedServoIds[0], CiId, id);
-        dropRxPackets();
+        receiveData(50); // drop packet
     }
 }
 

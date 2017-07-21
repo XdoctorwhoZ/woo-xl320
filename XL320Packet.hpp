@@ -28,7 +28,7 @@ public:
 
     //! Prepare packet manager with the following buffer
     //!
-    Packet(byte* buf, int size) : mData(buf), mDataSize(size) { }
+    Packet(byte* buf = 0, int size = 0) : mData(buf), mDataSize(size) { }
 
     //! Build a packet with the following data
     //!

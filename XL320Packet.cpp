@@ -98,6 +98,8 @@ String Packet::toString() const
         if(i!=0) { str += ','; }
         str += (int) getParameter(i);
     }
+    str += "),valid(";
+    str += validate();
     str += ")";
     return str;
 }

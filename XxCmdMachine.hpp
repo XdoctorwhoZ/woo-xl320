@@ -74,6 +74,10 @@ private:
 
     // === Reply helper ===
 
+    //! 
+    //!
+    void checkWarning(int left);
+
     //! To send message back to user
     //!
     void reply(const char* msg) { mStream->write(msg); }
@@ -98,6 +102,7 @@ private:
     //! a list that must be display with ',' between each vlaue
     //!
     void replyGetterWithIntList(const char* cmd, const int* list, int size);
+    void replyGetterWithIntList(XxCmd::Value command, const int* list, int size);
 
     // === Command functions ===
 
@@ -226,6 +231,19 @@ public:
 
       //      Serial.println("return 1");
         return 1;
+    }
+
+
+    int toIntList(int* li)
+    {
+        int n = 0;
+        char arg[8];
+        while(getNextArg(arg))
+        {
+            li[n] = String(arg).toInt();
+            n++;
+        }
+        return 0;
     }
 
 };
