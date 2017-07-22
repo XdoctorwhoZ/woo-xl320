@@ -273,7 +273,7 @@ int Controller::readValuesFromRxPackets(int* values)
 {
     // Read data from serial
     unsigned long timeout =
-        (unsigned long)mNumberOfSelectedServo * (unsigned long) 50000;
+        (unsigned long)mNumberOfSelectedServo * (unsigned long)RxBaseTimeout;
     receiveData(timeout);
 
     // Parse each packet
@@ -516,13 +516,43 @@ void Controller::sendSyncWritePacket(ControlIndex ci, const int* values, int num
 /* ============================================================================
  *
  * */
+int Controller::getStdVals(int* values, ControlIndex ci)
+{
+    if(mNumberOfSelectedServo == 1) {
+        sendReadPacket(mSelectedServoIds[0], ci);
+        return readValuesFromRxPackets(values);
+    }
+    else {
+        sendSyncReadPacket(ci);
+        return readValuesFromRxPackets(values);
+    }   
+}
+
+/* ============================================================================
+ *
+ * */
+void Controller::setStdVals(const int* values, int number, ControlIndex ci)
+{
+    if(number == 1)
+    {
+        sendWritePacket(mSelectedServoIds[0], ci, values[0]);
+    }
+    else
+    {
+        sendSyncWritePacket(ci, values, number);
+    }
+}
+
+/* ============================================================================
+ *
+ * */
 int Controller::ping(int* ids)
 {
     // Broadcast ping
     sendPingPacket();
 
     // Read data from serial 50ms
-    receiveData(50000);
+    receiveData(RxBaseTimeout);
 
     // Parse each packet
     Packet pack;
@@ -545,7 +575,7 @@ int Controller::ping(int* ids)
 /* ============================================================================
  *
  * */
-int Controller::getNumber(int* values) const
+int Controller::getNumber(int* values)
 {
     if(mNumberOfSelectedServo == 1) {
         sendReadPacket(mSelectedServoIds[0], CiModelNumber);
@@ -560,9 +590,16 @@ int Controller::getNumber(int* values) const
 /* ============================================================================
  *
  * */
-int Controller::getVersion(int* values) const
+int Controller::getVersion(int* values)
 {
-
+    if(mNumberOfSelectedServo == 1) {
+        sendReadPacket(mSelectedServoIds[0], CiVersion);
+        return readValuesFromRxPackets(values);
+    }
+    else {
+        sendSyncReadPacket(CiVersion);
+        return readValuesFromRxPackets(values);
+    }
 }
 
 /* ============================================================================
@@ -599,7 +636,7 @@ void Controller::setBaud(BaudRate br) const
     if(mNumberOfSelectedServo >= 1)
     {
         sendWritePacket(mSelectedServoIds[0], CiBaudRate, (int)br);
-        // TODO DROP PACKETS
+        receiveData(RxBaseTimeout);
     }
 }
 
@@ -608,7 +645,14 @@ void Controller::setBaud(BaudRate br) const
  * */
 int Controller::getReturnDelayTime(int* values) const
 {
-
+    if(mNumberOfSelectedServo == 1) {
+        sendReadPacket(mSelectedServoIds[0], CiReturnDelayTime);
+        return readValuesFromRxPackets(values);
+    }
+    else {
+        sendSyncReadPacket(CiReturnDelayTime);
+        return readValuesFromRxPackets(values);
+    }
 }
 
 /* ============================================================================
@@ -841,35 +885,6 @@ int Controller::getPgain(int* values) const
 void Controller::setPgain(const int* values, int number) const
 {
 
-}
-
-/* ============================================================================
- *
- * */
-int Controller::getGoalPosition(int* positions) const
-{
-
-}
-/* ============================================================================
- *
- * */
-void Controller::setGoalPosition(const int* positions, int number) const
-{
-    // if(mNumberOfSelectedServo == 1)
-    //     sendWritePacket(mSelectedServoIds[0], CiGoalPosition, positions[0]);
-}
-
-/* ============================================================================
- *
- * */
-int Controller::getGoalSpeed(int* speeds) const
-{
-// int Controller::getGpos(int* positions) const
-// {
-//     sendReadPacket(mSelectedServoIds[0], CiGoalPosition);
-//     delay(50);
-//     readValuesFromRxPackets(positions);
-// }
 }
 
 /* ============================================================================

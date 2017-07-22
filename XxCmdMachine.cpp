@@ -311,7 +311,10 @@ void XxCmdMachine::cmdModelNumberGetter()
  * */
 void XxCmdMachine::cmdVersionGetter()
 {
-
+    const int num = mController.getNumberOfSelectedServo();
+    int values[num];
+    checkWarning(mController.getVersion(values));
+    replyGetterWithIntList(XxCmd::ModelNumber, values, num);
 }   
 
 /* ============================================================================
@@ -353,7 +356,10 @@ void XxCmdMachine::cmdBaudGetter()
  * */
 void XxCmdMachine::cmdReturnDelayTimeGetter()
 {
-
+    const int num = mController.getNumberOfSelectedServo();
+    int values[num];
+    checkWarning(mController.getReturnDelayTime(values));
+    replyGetterWithIntList(XxCmd::ModelNumber, values, num);
 }   
 
 /* ============================================================================
@@ -473,7 +479,10 @@ void XxCmdMachine::cmdPgainGetter()
  * */
 void XxCmdMachine::cmdGoalPositionGetter()
 {
-
+    const int num = mController.getNumberOfSelectedServo();
+    int values[num];
+    checkWarning(mController.getGoalPosition(values));
+    replyGetterWithIntList(XxCmd::GoalPosition, values, num);
 }   
 
 /* ============================================================================
@@ -481,7 +490,10 @@ void XxCmdMachine::cmdGoalPositionGetter()
  * */
 void XxCmdMachine::cmdGoalSpeedGetter()
 {
-
+    const int num = mController.getNumberOfSelectedServo();
+    int values[num];
+    checkWarning(mController.getGoalSpeed(values));
+    replyGetterWithIntList(XxCmd::GoalSpeed, values, num);
 }   
 
 /* ============================================================================
@@ -809,20 +821,11 @@ void XxCmdMachine::cmdGoalPositionSetter(const char* args)
     int number = 0;
     int values[Controller::MaxServoSelectable];
 
-    char arg[8];
     XxArgParser ap(args);
-
-    while(ap.getNextArg(arg))
-    {
-        values[number] = String(arg).toInt();
-        number++;
-    }
-
-    //mController.setGpos(values, number);
-
-    String msg = "OK\r\n";
-    reply(msg.c_str());
-   
+    number = ap.toIntList(values);
+    mController.setGoalPosition(values, number);
+    
+    replyOk();
 }   
 
 /* ============================================================================

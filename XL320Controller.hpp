@@ -33,6 +33,7 @@ public:
 
     //! Flag to tell that the buffer is empty
     static constexpr int RxBufferEmpty = -42;
+    static constexpr unsigned long RxBaseTimeout = 80000;
 
     //! Data about control table
     //!
@@ -166,6 +167,16 @@ public:
     //!
     void sendSyncWritePacket(ControlIndex ci, const int* value, int num) const;
 
+    // === Std ===
+
+    //! Standart getter
+    //!
+    int getStdVals(int* values, ControlIndex ci);
+
+    //! Standart setter
+    //!
+    void setStdVals(const int* values, int number, ControlIndex ci);
+
     // === Ping ===
 
     //! Ping the chain and return the number of servo found
@@ -174,10 +185,10 @@ public:
     int ping(int* ids = 0);
 
     // === ModelNumber ===
-    int getNumber(int* values) const;
+    int getNumber(int* values);
 
     // === Version ===
-    int getVersion(int* values) const;
+    int getVersion(int* values);
 
     // === Id ===
     void setId(byte id); // Only once at time
@@ -247,11 +258,11 @@ public:
     void setPgain(const int* values, int number) const;
 
     // === GoalPosition ===
-    int getGoalPosition(int* positions) const;
-    void setGoalPosition(const int* positions, int number) const;
+    int getGoalPosition(int* values) { return getStdVals(values, CiGoalPosition); }
+    void setGoalPosition(const int* values, int number) { setStdVals(values, number, CiGoalPosition); }
 
     // === GoalSpeed ===
-    int getGoalSpeed(int* speeds) const;
+    int getGoalSpeed(int* values) { return getStdVals(values, CiGoalSpeed); }
     void setGoalSpeed(const int* speeds, int number) const;
 
     // === GoalTorque ===

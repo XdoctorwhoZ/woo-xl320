@@ -82,6 +82,10 @@ private:
     //!
     void reply(const char* msg) { mStream->write(msg); }
 
+    //!
+    //!
+    void replyOk() { reply("OK\r\n"); }
+
     //! To reply an error
     //!
     int syntaxError(const char* what = "")
@@ -198,11 +202,6 @@ public:
     //!
     byte getNextArg(char* arg)
     {
-        /*
-        Serial.print("===");
-        Serial.println(*mPtr);
-        Serial.println((int)*mPtr);
-    */
         // Check if there is more
         if(*mPtr == '\r' || *mPtr == '\n' || *mPtr == '\0')
         {
@@ -218,8 +217,6 @@ public:
         while(*mPtr != ',' && *mPtr != '\r' && *mPtr != '\n' && *mPtr != '\0')
         {
             *arg = *mPtr;
-        //    Serial.println(*arg);
-          //  Serial.println(*mPtr);
             arg++;
             mPtr++;
         }
@@ -227,11 +224,11 @@ public:
         // End it
         *arg = '\0';
 
-      //      Serial.println("return 1");
         return 1;
     }
 
-
+    //!
+    //!
     int toIntList(int* li)
     {
         int n = 0;
@@ -241,7 +238,7 @@ public:
             li[n] = String(arg).toInt();
             n++;
         }
-        return 0;
+        return n;
     }
 
 };
