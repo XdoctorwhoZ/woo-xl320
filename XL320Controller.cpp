@@ -223,18 +223,27 @@ int Controller::getNextPacket(Packet& pack)
     if(left <= 0) { return RxBufferEmpty; }
 
     // Function to safely increment size
-    auto upSize = [&size, this](int plus)
+    auto upSize = [&size, left, this](int plus)
     {
-        if( (size+plus) <= this->mRxBytes ) { size += plus; return true; }
+        if( (size+plus) <= left ) {
+            size += plus;
+            return true;
+        }
         else { return false; }
     };
 
     // Check packet
-    if( mRxPtr[size] != (byte)0xFF ) return -1; // 0
+    if( mRxPtr[size] != (byte)0xFF ) {
+        mRxPtr += (size+1); return -1; // 0
+    }
     if(!upSize(1)) { return RxBufferEmpty; }
-    if( mRxPtr[size] != (byte)0xFF ) return -2; // 1
+    if( mRxPtr[size] != (byte)0xFF ) {
+        mRxPtr += (size+1); return -2; // 1
+    }
     if(!upSize(1)) { return RxBufferEmpty; }
-    if( mRxPtr[size] != (byte)0xFD ) return -2; // 2
+    if( mRxPtr[size] != (byte)0xFD ) {
+        mRxPtr += (size+1); return -2; // 2
+    }
     if(!upSize(3)) { return RxBufferEmpty; }
     byte lenL = mRxPtr[size]; // 5
     if(!upSize(1)) { return RxBufferEmpty; }
@@ -262,8 +271,10 @@ int Controller::getNextPacket(Packet& pack)
  * */
 int Controller::readValuesFromRxPackets(int* values)
 {
-    // Read data from serial 50ms
-    receiveData(mNumberOfSelectedServo*1000);
+    // Read data from serial
+    unsigned long timeout =
+        (unsigned long)mNumberOfSelectedServo * (unsigned long) 50000;
+    receiveData(timeout);
 
     // Parse each packet
     Packet pack;
@@ -306,61 +317,6 @@ int Controller::readValuesFromRxPackets(int* values)
         // else drop packet (it is our TX)
     }
     return number;
-
-
-    // // RX buffer
-    // const int rxBufferSize = 32;
-    // byte rxBuffer[rxBufferSize];
-
-    // // Check rx buffer
-    // int size = 0;
-    // int number = mNumberOfSelectedServo;
-    // while(size != -42)
-    // {
-    //     // Read one packet only
-    //     size = readNextPacket(rxBuffer, rxBufferSize);
-    //     if(size == -42) {
-    //         break;
-    //     }
-
-    //     // Prepare packet parsing
-    //     Packet pack(rxBuffer, size);
-
-    //     // If the packet is an return status only (else it is the out Tx...)
-    //     if(pack.getInstruction() == InsStatus)
-    //     {
-    //         int value = 0;
-
-    //         const int pcount = pack.getParameterCount();
-
-    //         switch(pcount)
-    //         {
-    //             case 2:
-    //                 // 0 -> error reg
-    //                 value = (int) pack.getParameter(1);
-    //                 break;
-    //             case 3:
-    //                 // 0 -> error reg
-    //                 value = (int) DXL_MAKEWORD(pack.getParameter(1), pack.getParameter(2));
-    //                 break;
-    //             default:
-    //                 value = 0;
-    //         }
-
-    //         const int id = pack.getId();
-    //         for(int i=0 ; i<mNumberOfSelectedServo ; i++)
-    //         {
-    //             if( (int)mSelectedServoIds[i] == id )
-    //             {
-    //                 values[i] = value;
-    //             }
-    //         }
-
-    //         number--;
-    //     }
-    // }
-
-    // return number;
 }
 
 /* ============================================================================
@@ -445,7 +401,7 @@ void Controller::sendSyncReadPacket(ControlIndex ci) const
     params[3] = DXL_HIBYTE(ControlTable[ci].size);
     for(int i=0 ; i<mNumberOfSelectedServo ; i++)
     {
-        params[3+i] = mSelectedServoIds[i];
+        params[4+i] = mSelectedServoIds[i];
     }
 
     // Build packet
@@ -596,9 +552,9 @@ int Controller::getNumber(int* values) const
         return readValuesFromRxPackets(values);
     }
     else {
-
+        sendSyncReadPacket(CiModelNumber);
+        return readValuesFromRxPackets(values);
     }
-
 }
 
 /* ============================================================================
