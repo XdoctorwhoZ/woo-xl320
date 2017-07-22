@@ -257,86 +257,6 @@ int Controller::getNextPacket(Packet& pack)
     return 0;
 }
 
-
-/* ============================================================================
- *
- * */
-int Controller::readNextPacket(byte* buffer, int msize)
-{
-    byte len_l;
-    byte len_h;
-    int params_size;
-
-    byte size = 0;
-    byte state = 0;
-
-    while (mXlSerial->available())
-    {
-        byte c = mXlSerial->read();
-
-        switch(state)
-        {
-            case 0: {
-                if(c != (byte)0xFF) return -1;
-                buffer[size] = c; size++; state++; break;
-            }
-            case 1: {
-                if(c != (byte)0xFF) return -2;
-                buffer[size] = c; size++; state++; break;
-            }
-            case 2: {
-                if(c != (byte)0xFD) return -3;
-                buffer[size] = c; size++; state++; break;
-            }
-            case 3: {
-                buffer[size] = c; size++; state++; break;
-            }
-            case 4: {
-                buffer[size] = c; size++; state++; break;
-            }
-            case 5: {
-                len_l = c;
-                buffer[size] = c; size++; state++; break;
-            }
-            case 6: {
-                len_h = c;
-                params_size = DXL_MAKEWORD(len_l, len_h);
-                buffer[size] = c; size++; state++; break;
-            }
-            case 7: {
-                if(params_size > 0) {
-                    buffer[size] = c; 
-                    size++;
-                    params_size--;
-                    if(params_size <= 0) {
-                        return size;
-                    }
-                }
-            }
-        }
-    }
-    return -42;
-}
-
-/* ============================================================================
- *
- * */
-void Controller::dropRxPackets()
-{
-    // RX buffer
-    const int rxBufferSize = 32;
-    byte rxBuffer[rxBufferSize];
-
-    delay(20);
-
-    // Read packet and drop them until there is no more
-    int size = 0;
-    while(size != -42)
-    {
-        size = readNextPacket(rxBuffer, rxBufferSize);
-    }
-}
-
 /* ============================================================================
  *
  * */
@@ -664,39 +584,6 @@ int Controller::ping(int* ids)
         // else drop packet (it is our TX)
     }
     return number;
-
-    // // RX buffer
-    // const int rxBufferSize = 32;
-    // byte rxBuffer[rxBufferSize];
-
-    // // Check rx buffer
-    // int size = 0;
-    // int number = 0;
-    // while(size != -42)
-    // {
-    //     size = readNextPacket(rxBuffer, rxBufferSize);
-    //     if(size == -42) {
-    //         break;
-    //     }
-
-    //     Packet pack(rxBuffer, size);
-
-    //     #ifdef XL320Controller_DEBUG
-    //     Serial.print("pack : ");
-    //     Serial.println(size, DEC);
-    //     #endif
-
-    //     if(pack.getInstruction() == InsStatus) {
-    //         ids[number] = (int) pack.getId();
-    //         number++;
-
-    //         #ifdef XL320Controller_DEBUG
-    //         Serial.print("new : ");
-    //         Serial.println(number, DEC);
-    //         #endif
-    //     }
-    // }
-
 }
 
 /* ============================================================================
@@ -704,6 +591,13 @@ int Controller::ping(int* ids)
  * */
 int Controller::getNumber(int* values) const
 {
+    if(mNumberOfSelectedServo == 1) {
+        sendReadPacket(mSelectedServoIds[0], CiModelNumber);
+        return readValuesFromRxPackets(values);
+    }
+    else {
+
+    }
 
 }
 
@@ -749,7 +643,7 @@ void Controller::setBaud(BaudRate br) const
     if(mNumberOfSelectedServo >= 1)
     {
         sendWritePacket(mSelectedServoIds[0], CiBaudRate, (int)br);
-        dropRxPackets();
+        // TODO DROP PACKETS
     }
 }
 

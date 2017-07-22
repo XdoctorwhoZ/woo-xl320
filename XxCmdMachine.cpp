@@ -130,11 +130,8 @@ void XxCmdMachine::parse(const char* command)
             switch(cmd)
             {
                 case XxCmd::XBaud                   : cmdXbaudSetter(ptr) ;                     break;
-                // case XxCmd::Ping                 :                                           break;
                 case XxCmd::Select                  : cmdSelectSetter(ptr);                     break;
 
-                case XxCmd::ModelNumber             : cmdModelNumberSetter(ptr);                break;
-                case XxCmd::Version                 : cmdVersionSetter(ptr);                    break;
                 case XxCmd::Id                      : cmdIdSetter(ptr);                         break;
                 case XxCmd::Baud                    : cmdBaudSetter(ptr);                       break;
                 case XxCmd::ReturnDelayTime         : cmdReturnDelayTimeSetter(ptr);            break;
@@ -305,7 +302,7 @@ void XxCmdMachine::cmdModelNumberGetter()
 {
     const int num = mController.getNumberOfSelectedServo();
     int values[num];
-    int left = mController.getNumber(values);
+    checkWarning(mController.getNumber(values));
     replyGetterWithIntList(XxCmd::ModelNumber, values, num);
 }   
 
@@ -635,22 +632,6 @@ void XxCmdMachine::cmdSelectSetter(const char* args)
     String msg = "OK" + mController.getSelectedServoString() + "\r\n";
     reply(msg.c_str());
 }
-
-/* ============================================================================
- *
- * */
-void XxCmdMachine::cmdModelNumberSetter(const char* args)
-{
-
-}   
-
-/* ============================================================================
- *
- * */
-void XxCmdMachine::cmdVersionSetter(const char* args)
-{
-
-}   
 
 /* ============================================================================
  *

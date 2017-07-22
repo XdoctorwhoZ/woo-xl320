@@ -141,16 +141,6 @@ public:
     //!
     int getNextPacket(Packet& pack);
 
-
-    //! Read a packet from xl serial, store data in buffer and return number of byte read
-    //! msize is the max size of the buffer
-    //!
-    int readNextPacket(byte* buffer, int msize); // Deprecated
-
-    //! Drop all Rx Packets
-    //!
-    void dropRxPackets(); // Deprecated
-
     //! Read incoming packets and fill values table.
     //! values size must be equal to mNumberOfSelectedServo
     //!

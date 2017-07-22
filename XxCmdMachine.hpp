@@ -146,9 +146,7 @@ private:
     //! XX+SELECT=
     void cmdXbaudSetter(const char* args);
     void cmdSelectSetter(const char* args);
-
-    void cmdModelNumberSetter(const char* args);             
-    void cmdVersionSetter(const char* args);                 
+              
     void cmdIdSetter(const char* args);                      
     void cmdBaudSetter(const char* args);                    
     void cmdReturnDelayTimeSetter(const char* args);         
