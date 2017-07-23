@@ -263,31 +263,31 @@ public:
 
     // === GoalSpeed ===
     int getGoalSpeed(int* values) { return getStdVals(values, CiGoalSpeed); }
-    void setGoalSpeed(const int* speeds, int number) const;
+    void setGoalSpeed(const int* values, int number) { setStdVals(values, number, CiGoalSpeed); }
 
     // === GoalTorque ===
-    int getGoalTorque(int* values) const;
-    void setGoalTorque(const int* values, int number) const;
+    int getGoalTorque(int* values) { return getStdVals(values, CiGoalTorque); }
+    void setGoalTorque(const int* values, int number) { setStdVals(values, number, CiGoalTorque); }
 
     // === PresentPosition ===
-    int getPresentPosition(int* values) const;
-    void setPresentPosition(const int* values, int number) const;
+    int getPresentPosition(int* values) { return getStdVals(values, CiPresentPosition); }
+    void setPresentPosition(const int* values, int number) { setStdVals(values, number, CiPresentPosition); }
 
     // === PresentSpeed ===
-    int getPresentSpeed(int* values) const;
-    void setPresentSpeed(const int* values, int number) const;
+    int getPresentSpeed(int* values) { return getStdVals(values, CiPresentSpeed); }
+    void setPresentSpeed(const int* values, int number) { setStdVals(values, number, CiPresentSpeed); }
 
     // === PresentLoad ===
-    int getPresentLoad(int* values) const;
-    void setPresentLoad(const int* values, int number) const;
+    int getPresentLoad(int* values) { return getStdVals(values, CiPresentLoad); }
+    void setPresentLoad(const int* values, int number) { setStdVals(values, number, CiPresentLoad); }
 
     // === PresentVoltage ===
-    int getPresentVoltage(int* values) const;
-    void setPresentVoltage(const int* values, int number) const;
+    int getPresentVoltage(int* values) { return getStdVals(values, CiPresentVoltage); }
+    void setPresentVoltage(const int* values, int number) { setStdVals(values, number, CiPresentVoltage); }
 
     // === PresentTemperature ===
-    int getPresentTemperature(int* values) const;
-    void setPresentTemperature(const int* values, int number) const;
+    int getPresentTemperature(int* values) { return getStdVals(values, CiPresentTemperature); }
+    void setPresentTemperature(const int* values, int number) { setStdVals(values, number, CiPresentTemperature); }
 
     // === RegisteredInstruction ===
     int getRegisteredInstruction(int* values) const;

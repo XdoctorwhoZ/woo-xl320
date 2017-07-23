@@ -21,6 +21,10 @@ class XxCmdMachine
 
 public:
 
+    typedef int (xl320::Controller::*GetFctPtr)(int*);
+    typedef void (xl320::Controller::*SetFctPtr)(const int*, int);
+
+
     //! Maximal number of servo xl-320 selectable at once
     static constexpr byte MaxCmdSize = 128;
 
@@ -110,6 +114,9 @@ private:
 
     // === Command functions ===
 
+    void stdListGetter(GetFctPtr getfct, XxCmd::Value val);
+    void stdListSetter(SetFctPtr setfct, const char* args);
+
     //! XX+SELECT?
     void cmdXbaudGetter();
     void cmdPingGetter();
@@ -167,15 +174,33 @@ private:
     void cmdLedSetter(const char* args);                     
     void cmdDgainSetter(const char* args);                   
     void cmdIgainSetter(const char* args);                   
-    void cmdPgainSetter(const char* args);                   
+    void cmdPgainSetter(const char* args);   
+
+
+    
     void cmdGoalPositionSetter(const char* args);            
-    void cmdGoalSpeedSetter(const char* args);               
-    void cmdGoalTorqueSetter(const char* args);              
-    void cmdPresentPositionSetter(const char* args);         
-    void cmdPresentSpeedSetter(const char* args);            
-    void cmdPresentLoadSetter(const char* args);             
-    void cmdPresentVoltageSetter(const char* args);          
-    void cmdPresentTemperatureSetter(const char* args);      
+    void cmdGoalSpeedSetter(const char* args) {
+        stdListSetter(&xl320::Controller::setGoalSpeed, args);
+    }
+    void cmdGoalTorqueSetter(const char* args) {
+        stdListSetter(&xl320::Controller::setGoalTorque, args);
+    }              
+    void cmdPresentPositionSetter(const char* args) {
+        stdListSetter(&xl320::Controller::setPresentPosition, args);
+    }
+    void cmdPresentSpeedSetter(const char* args) {
+        stdListSetter(&xl320::Controller::setPresentSpeed, args);
+    }
+    void cmdPresentLoadSetter(const char* args) {
+        stdListSetter(&xl320::Controller::setPresentLoad, args);
+    }
+    void cmdPresentVoltageSetter(const char* args) {
+        stdListSetter(&xl320::Controller::setPresentVoltage, args);
+    }
+    void cmdPresentTemperatureSetter(const char* args) {
+        stdListSetter(&xl320::Controller::setPresentTemperature, args);
+    }
+
     void cmdRegisteredInstructionSetter(const char* args);   
     void cmdMovingSetter(const char* args);                  
     void cmdHardwareErrorSetter(const char* args);           

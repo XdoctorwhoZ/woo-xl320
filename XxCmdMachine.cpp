@@ -248,6 +248,32 @@ void XxCmdMachine::replyGetterWithIntList(XxCmd::Value command, const int* list,
 /* ============================================================================
  *
  * */
+void XxCmdMachine::stdListGetter(GetFctPtr getfct, XxCmd::Value val)
+{
+    const int num = mController.getNumberOfSelectedServo();
+    int values[num];
+    checkWarning((mController.*getfct)(values));
+    replyGetterWithIntList(val, values, num);
+}
+
+/* ============================================================================
+ *
+ * */
+void XxCmdMachine::stdListSetter(SetFctPtr setfct, const char* args)
+{
+    int number = 0;
+    int values[Controller::MaxServoSelectable];
+
+    XxArgParser ap(args);
+    number = ap.toIntList(values);
+    (mController.*setfct)(values, number);
+
+    replyOk();
+}
+
+/* ============================================================================
+ *
+ * */
 void XxCmdMachine::cmdXbaudGetter()
 {
     replyGetterWithParam("+XBAUD:", mController.getXlBaudRateString().c_str());
@@ -813,6 +839,18 @@ void XxCmdMachine::cmdPgainSetter(const char* args)
 
 }   
 
+
+    // int getGoalTorque(int* values) { return getStdVals(values, CiGoalTorque); }
+    // int getGoalSpeed(int* values) { return getStdVals(values, CiGoalSpeed); }
+    // int getPresentPosition(int* values) { return getStdVals(values, CiPresentPosition); }
+    // int getPresentSpeed(int* values) { return getStdVals(values, CiPresentSpeed); }
+    // int getPresentLoad(int* values) { return getStdVals(values, CiPresentLoad); }    
+    // int getPresentVoltage(int* values) { return getStdVals(values, CiPresentVoltage); }
+    // int getPresentTemperature(int* values) { return getStdVals(values, CiPresentTemperature); }
+    
+
+
+
 /* ============================================================================
  *
  * */
@@ -826,62 +864,6 @@ void XxCmdMachine::cmdGoalPositionSetter(const char* args)
     mController.setGoalPosition(values, number);
     
     replyOk();
-}   
-
-/* ============================================================================
- *
- * */
-void XxCmdMachine::cmdGoalSpeedSetter(const char* args)
-{
-
-}   
-
-/* ============================================================================
- *
- * */
-void XxCmdMachine::cmdGoalTorqueSetter(const char* args)
-{
-
-}   
-
-/* ============================================================================
- *
- * */
-void XxCmdMachine::cmdPresentPositionSetter(const char* args)
-{
-
-}   
-
-/* ============================================================================
- *
- * */
-void XxCmdMachine::cmdPresentSpeedSetter(const char* args)
-{
-
-}   
-
-/* ============================================================================
- *
- * */
-void XxCmdMachine::cmdPresentLoadSetter(const char* args)
-{
-
-}   
-
-/* ============================================================================
- *
- * */
-void XxCmdMachine::cmdPresentVoltageSetter(const char* args)
-{
-
-}   
-
-/* ============================================================================
- *
- * */
-void XxCmdMachine::cmdPresentTemperatureSetter(const char* args)
-{
-
 }   
 
 /* ============================================================================
