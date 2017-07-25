@@ -202,60 +202,60 @@ public:
     void setReturnDelayTime(const int* values, int number) const;
 
     // === CwAngleLimit ===
-    int getCwAngleLimit(int* values) const;
-    void setCwAngleLimit(const int* values, int number) const;
+    int getCwAngleLimit(int* values) { return getStdVals(values, CiCwAngleLimit); }
+    void setCwAngleLimit(const int* values, int number) { setStdVals(values, number, CiCwAngleLimit); }
 
     // === CcwAngleLimit ===
-    int getCcwAngleLimit(int* values) const;
-    void setCcwAngleLimit(const int* values, int number) const;
+    int getCcwAngleLimit(int* values) { return getStdVals(values, CiCcwAngleLimit); }
+    void setCcwAngleLimit(const int* values, int number) { setStdVals(values, number, CiCcwAngleLimit); }
 
     // === ControlMode ===
-    int getControlMode(int* values) const;
-    void setControlMode(const int* values, int number) const;
+    int getControlMode(int* values) { return getStdVals(values, CiControlMode); }
+    void setControlMode(const int* values, int number) { setStdVals(values, number, CiControlMode); }
 
     // === LimitTemperature ===
-    int getLimitTemperature(int* values) const;
-    void setLimitTemperature(const int* values, int number) const;
+    int getLimitTemperature(int* values) { return getStdVals(values, CiLimitTemperature); }
+    void setLimitTemperature(const int* values, int number) { setStdVals(values, number, CiLimitTemperature); }
 
     // === DownLimitVoltage ===
-    int getDownLimitVoltage(int* values) const;
-    void setDownLimitVoltage(const int* values, int number) const;
+    int getDownLimitVoltage(int* values) { return getStdVals(values, CiDownLimitVoltage); }
+    void setDownLimitVoltage(const int* values, int number) { setStdVals(values, number, CiDownLimitVoltage); }
 
     // === UpLimitVoltage ===
-    int getUpLimitVoltage(int* values) const;
-    void setUpLimitVoltage(const int* values, int number) const;
+    int getUpLimitVoltage(int* values) { return getStdVals(values, CiUpLimitVoltage); }
+    void setUpLimitVoltage(const int* values, int number) { setStdVals(values, number, CiUpLimitVoltage); }
 
     // === MaxTorque ===
-    int getMaxTorque(int* values) const;
-    void setMaxTorque(const int* values, int number) const;
+    int getMaxTorque(int* values) { return getStdVals(values, CiMaxTorque); }
+    void setMaxTorque(const int* values, int number) { setStdVals(values, number, CiMaxTorque); }
 
     // === ReturnLevel ===
-    int getReturnLevel(int* values) const;
-    void setReturnLevel(const int* values, int number) const;
+    int getReturnLevel(int* values) { return getStdVals(values, CiReturnLevel); }
+    void setReturnLevel(const int* values, int number) { setStdVals(values, number, CiReturnLevel); }
 
     // === AlarmShutdown ===
-    int getAlarmShutdown(int* values) const;
-    void setAlarmShutdown(const int* values, int number) const;
+    int getAlarmShutdown(int* values) { return getStdVals(values, CiAlarmShutdown); }
+    void setAlarmShutdown(const int* values, int number) { setStdVals(values, number, CiAlarmShutdown); }
 
     // === TorqueEnable ===
-    int getTorqueEnable(int* values) const;
-    void setTorqueEnable(const int* values, int number) const;
+    int getTorqueEnable(int* values) { return getStdVals(values, CiTorqueEnable); }
+    void setTorqueEnable(const int* values, int number) { setStdVals(values, number, CiTorqueEnable); }
 
     // === Led ===
-    int getLed(int* values) const;
-    void setLed(const int* values, int number) const;
+    int getLed(int* values) { return getStdVals(values, CiLed); }
+    void setLed(const int* values, int number) { setStdVals(values, number, CiLed); }
 
     // === Dgain ===
-    int getDgain(int* values) const;
-    void setDgain(const int* values, int number) const;
+    int getDgain(int* values) { return getStdVals(values, CiDgain); }
+    void setDgain(const int* values, int number) { setStdVals(values, number, CiDgain); }
 
     // === Igain ===
-    int getIgain(int* values) const;
-    void setIgain(const int* values, int number) const;
+    int getIgain(int* values) { return getStdVals(values, CiIgain); }
+    void setIgain(const int* values, int number) { setStdVals(values, number, CiIgain); }
 
     // === Pgain ===
-    int getPgain(int* values) const;
-    void setPgain(const int* values, int number) const;
+    int getPgain(int* values) { return getStdVals(values, CiPgain); }
+    void setPgain(const int* values, int number) { setStdVals(values, number, CiPgain); }
 
     // === GoalPosition ===
     int getGoalPosition(int* values) { return getStdVals(values, CiGoalPosition); }
@@ -271,35 +271,27 @@ public:
 
     // === PresentPosition ===
     int getPresentPosition(int* values) { return getStdVals(values, CiPresentPosition); }
-    void setPresentPosition(const int* values, int number) { setStdVals(values, number, CiPresentPosition); }
 
     // === PresentSpeed ===
     int getPresentSpeed(int* values) { return getStdVals(values, CiPresentSpeed); }
-    void setPresentSpeed(const int* values, int number) { setStdVals(values, number, CiPresentSpeed); }
 
     // === PresentLoad ===
     int getPresentLoad(int* values) { return getStdVals(values, CiPresentLoad); }
-    void setPresentLoad(const int* values, int number) { setStdVals(values, number, CiPresentLoad); }
 
     // === PresentVoltage ===
     int getPresentVoltage(int* values) { return getStdVals(values, CiPresentVoltage); }
-    void setPresentVoltage(const int* values, int number) { setStdVals(values, number, CiPresentVoltage); }
 
     // === PresentTemperature ===
     int getPresentTemperature(int* values) { return getStdVals(values, CiPresentTemperature); }
-    void setPresentTemperature(const int* values, int number) { setStdVals(values, number, CiPresentTemperature); }
 
     // === RegisteredInstruction ===
     int getRegisteredInstruction(int* values) const;
-    void setRegisteredInstruction(const int* values, int number) const;
 
     // === Moving ===
     int getMoving(int* values) const;
-    void setMoving(const int* values, int number) const;
 
     // === HardwareError ===
     int getHardwareError(int* values) const;
-    void setHardwareError(const int* values, int number) const;
 
     // === Punch ===
     int getPunch(int* values) const;

@@ -152,14 +152,6 @@ void XxCmdMachine::parse(const char* command)
                 case XxCmd::GoalPosition            : cmdGoalPositionSetter(ptr);               break;
                 case XxCmd::GoalSpeed               : cmdGoalSpeedSetter(ptr);                  break;
                 case XxCmd::GoalTorque              : cmdGoalTorqueSetter(ptr);                 break;
-                case XxCmd::PresentPosition         : cmdPresentPositionSetter(ptr);            break;
-                case XxCmd::PresentSpeed            : cmdPresentSpeedSetter(ptr);               break;
-                case XxCmd::PresentLoad             : cmdPresentLoadSetter(ptr);                break;
-                case XxCmd::PresentVoltage          : cmdPresentVoltageSetter(ptr);             break;
-                case XxCmd::PresentTemperature      : cmdPresentTemperatureSetter(ptr);         break;
-                case XxCmd::RegisteredInstruction   : cmdRegisteredInstructionSetter(ptr);      break;
-                case XxCmd::Moving                  : cmdMovingSetter(ptr);                     break;
-                case XxCmd::HardwareError           : cmdHardwareErrorSetter(ptr);              break;
                 case XxCmd::Punch                   : cmdPunchSetter(ptr);                      break;
                 default                             : syntaxError("unknown");                   break;
             }
@@ -296,29 +288,6 @@ void XxCmdMachine::cmdSelectGetter()
 {
     String msg = "+SELECT:" + mController.getSelectedServoString() + "\r\nOK\r\n";
     reply(msg.c_str());
-}
-
-/* ============================================================================
- *
- * *
-void XxCmdMachine::cmdGposGetter()
-{
-    const int num = mController.getNumberOfSelectedServo();
-
-    // Send request to servos
-    int values[num];
-    mController.getGpos(values);
-
-    // prepare answer
-    String msg = "+GPOS:";
-    for(int i=0 ; i<num ; i++)
-    {
-        if(i!=0) msg += ',';
-        msg += (int) values[i];
-    }
-    msg += "\r\nOK\r\n";
-    reply(msg.c_str());
-    return 0;
 }
 
 /* ============================================================================
@@ -488,14 +457,6 @@ void XxCmdMachine::cmdDgainGetter()
  *
  * */
 void XxCmdMachine::cmdIgainGetter()
-{
-
-}   
-
-/* ============================================================================
- *
- * */
-void XxCmdMachine::cmdPgainGetter()
 {
 
 }   
@@ -727,168 +688,6 @@ void XxCmdMachine::cmdReturnDelayTimeSetter(const char* args)
 
 }   
 
-/* ============================================================================
- *
- * */
-void XxCmdMachine::cmdCwAngleLimitSetter(const char* args)
-{
-
-}   
-
-/* ============================================================================
- *
- * */
-void XxCmdMachine::cmdCcwAngleLimitSetter(const char* args)
-{
-
-}   
-
-/* ============================================================================
- *
- * */
-void XxCmdMachine::cmdControlModeSetter(const char* args)
-{
-
-}   
-
-/* ============================================================================
- *
- * */
-void XxCmdMachine::cmdLimitTemperatureSetter(const char* args)
-{
-
-}   
-
-/* ============================================================================
- *
- * */
-void XxCmdMachine::cmdDownLimitVoltageSetter(const char* args)
-{
-
-}   
-
-/* ============================================================================
- *
- * */
-void XxCmdMachine::cmdUpLimitVoltageSetter(const char* args)
-{
-
-}   
-
-/* ============================================================================
- *
- * */
-void XxCmdMachine::cmdMaxTorqueSetter(const char* args)
-{
-
-}   
-
-/* ============================================================================
- *
- * */
-void XxCmdMachine::cmdReturnLevelSetter(const char* args)
-{
-
-}   
-
-/* ============================================================================
- *
- * */
-void XxCmdMachine::cmdAlarmShutdownSetter(const char* args)
-{
-
-}   
-
-/* ============================================================================
- *
- * */
-void XxCmdMachine::cmdTorqueEnableSetter(const char* args)
-{
-
-}   
-
-/* ============================================================================
- *
- * */
-void XxCmdMachine::cmdLedSetter(const char* args)
-{
-
-}   
-
-/* ============================================================================
- *
- * */
-void XxCmdMachine::cmdDgainSetter(const char* args)
-{
-
-}   
-
-/* ============================================================================
- *
- * */
-void XxCmdMachine::cmdIgainSetter(const char* args)
-{
-
-}   
-
-/* ============================================================================
- *
- * */
-void XxCmdMachine::cmdPgainSetter(const char* args)
-{
-
-}   
-
-
-    // int getGoalTorque(int* values) { return getStdVals(values, CiGoalTorque); }
-    // int getGoalSpeed(int* values) { return getStdVals(values, CiGoalSpeed); }
-    // int getPresentPosition(int* values) { return getStdVals(values, CiPresentPosition); }
-    // int getPresentSpeed(int* values) { return getStdVals(values, CiPresentSpeed); }
-    // int getPresentLoad(int* values) { return getStdVals(values, CiPresentLoad); }    
-    // int getPresentVoltage(int* values) { return getStdVals(values, CiPresentVoltage); }
-    // int getPresentTemperature(int* values) { return getStdVals(values, CiPresentTemperature); }
-    
-
-
-
-/* ============================================================================
- *
- * */
-void XxCmdMachine::cmdGoalPositionSetter(const char* args)
-{
-    int number = 0;
-    int values[Controller::MaxServoSelectable];
-
-    XxArgParser ap(args);
-    number = ap.toIntList(values);
-    mController.setGoalPosition(values, number);
-    
-    replyOk();
-}   
-
-/* ============================================================================
- *
- * */
-void XxCmdMachine::cmdRegisteredInstructionSetter(const char* args)
-{
-
-}   
-
-/* ============================================================================
- *
- * */
-void XxCmdMachine::cmdMovingSetter(const char* args)
-{
-
-}   
-
-/* ============================================================================
- *
- * */
-void XxCmdMachine::cmdHardwareErrorSetter(const char* args)
-{
-
-}   
 
 /* ============================================================================
  *

@@ -122,6 +122,38 @@ private:
     void cmdPingGetter();
     void cmdSelectGetter();
 
+
+    // CwAngleLimit            =  8    ,
+    // CcwAngleLimit           =  9    ,
+    // ControlMode             = 10    ,
+    // LimitTemperature        = 11    ,
+    // DownLimitVoltage        = 12    ,
+    // UpLimitVoltage          = 13    ,
+    // MaxTorque               = 14    ,
+    // ReturnLevel             = 15    ,
+    // AlarmShutdown           = 16    ,
+    // TorqueEnable            = 17    ,
+    // Led                     = 18    ,
+    // Dgain                   = 19    ,
+    // Igain                   = 20    ,
+    // Pgain                   = 21    ,
+
+    // int getCwAngleLimit(int* values) { return getStdVals(values, CiCwAngleLimit); }
+    // int getCcwAngleLimit(int* values) { return getStdVals(values, CiCcwAngleLimit); }
+    // int getControlMode(int* values) { return getStdVals(values, CiControlMode); }
+    // int getLimitTemperature(int* values) { return getStdVals(values, CiLimitTemperature); }
+    // int getDownLimitVoltage(int* values) { return getStdVals(values, CiDownLimitVoltage); }
+    // int getUpLimitVoltage(int* values) { return getStdVals(values, CiUpLimitVoltage); }
+    // int getMaxTorque(int* values) { return getStdVals(values, CiMaxTorque); }
+    // int getReturnLevel(int* values) { return getStdVals(values, CiReturnLevel); }
+    // int getAlarmShutdown(int* values) { return getStdVals(values, CiAlarmShutdown); }
+    // int getTorqueEnable(int* values) { return getStdVals(values, CiTorqueEnable); }
+    // int getLed(int* values) { return getStdVals(values, CiLed); }
+    // int getDgain(int* values) { return getStdVals(values, CiDgain); }
+    // int getIgain(int* values) { return getStdVals(values, CiIgain); }
+    // int (int* values) { return getStdVals(values, CiPgain); }
+
+
     void cmdModelNumberGetter();             
     void cmdVersionGetter();                 
     void cmdIdGetter();                      
@@ -140,7 +172,7 @@ private:
     void cmdLedGetter();                     
     void cmdDgainGetter();                   
     void cmdIgainGetter();                   
-    void cmdPgainGetter();                   
+    void cmdPgainGetter() { stdListGetter(&xl320::Controller::getPgain, XxCmd::Pgain); }
     void cmdGoalPositionGetter();            
     void cmdGoalSpeedGetter();               
     void cmdGoalTorqueGetter();              
@@ -157,52 +189,63 @@ private:
     //! XX+SELECT=
     void cmdXbaudSetter(const char* args);
     void cmdSelectSetter(const char* args);
-              
+    
     void cmdIdSetter(const char* args);                      
     void cmdBaudSetter(const char* args);                    
     void cmdReturnDelayTimeSetter(const char* args);         
-    void cmdCwAngleLimitSetter(const char* args);            
-    void cmdCcwAngleLimitSetter(const char* args);           
-    void cmdControlModeSetter(const char* args);             
-    void cmdLimitTemperatureSetter(const char* args);        
-    void cmdDownLimitVoltageSetter(const char* args);        
-    void cmdUpLimitVoltageSetter(const char* args);          
-    void cmdMaxTorqueSetter(const char* args);               
-    void cmdReturnLevelSetter(const char* args);             
-    void cmdAlarmShutdownSetter(const char* args);           
-    void cmdTorqueEnableSetter(const char* args);            
-    void cmdLedSetter(const char* args);                     
-    void cmdDgainSetter(const char* args);                   
-    void cmdIgainSetter(const char* args);                   
-    void cmdPgainSetter(const char* args);   
 
-
-    
-    void cmdGoalPositionSetter(const char* args);            
+    void cmdCwAngleLimitSetter(const char* args) {
+        stdListSetter(&xl320::Controller::setCwAngleLimit, args);
+    }
+    void cmdCcwAngleLimitSetter(const char* args) {
+        stdListSetter(&xl320::Controller::setCcwAngleLimit, args);
+    }
+    void cmdControlModeSetter(const char* args) {
+        stdListSetter(&xl320::Controller::setControlMode, args);
+    }
+    void cmdLimitTemperatureSetter(const char* args) {
+        stdListSetter(&xl320::Controller::setLimitTemperature, args);
+    }
+    void cmdDownLimitVoltageSetter(const char* args) {
+        stdListSetter(&xl320::Controller::setDownLimitVoltage, args);
+    }
+    void cmdUpLimitVoltageSetter(const char* args) {
+        stdListSetter(&xl320::Controller::setUpLimitVoltage, args);
+    }
+    void cmdMaxTorqueSetter(const char* args) {
+        stdListSetter(&xl320::Controller::setMaxTorque, args);
+    }
+    void cmdReturnLevelSetter(const char* args) {
+        stdListSetter(&xl320::Controller::setReturnLevel, args);
+    }
+    void cmdAlarmShutdownSetter(const char* args) {
+        stdListSetter(&xl320::Controller::setAlarmShutdown, args);
+    }
+    void cmdTorqueEnableSetter(const char* args) {
+        stdListSetter(&xl320::Controller::setTorqueEnable, args);
+    }
+    void cmdLedSetter(const char* args) {
+        stdListSetter(&xl320::Controller::setLed, args);
+    }
+    void cmdDgainSetter(const char* args) {
+        stdListSetter(&xl320::Controller::setDgain, args);
+    }
+    void cmdIgainSetter(const char* args) {
+        stdListSetter(&xl320::Controller::setIgain, args);
+    }
+    void cmdPgainSetter(const char* args) {
+        stdListSetter(&xl320::Controller::setPgain, args);
+    }
+    void cmdGoalPositionSetter(const char* args) {
+        stdListSetter(&xl320::Controller::setGoalPosition, args);
+    }
     void cmdGoalSpeedSetter(const char* args) {
         stdListSetter(&xl320::Controller::setGoalSpeed, args);
     }
     void cmdGoalTorqueSetter(const char* args) {
         stdListSetter(&xl320::Controller::setGoalTorque, args);
-    }              
-    void cmdPresentPositionSetter(const char* args) {
-        stdListSetter(&xl320::Controller::setPresentPosition, args);
     }
-    void cmdPresentSpeedSetter(const char* args) {
-        stdListSetter(&xl320::Controller::setPresentSpeed, args);
-    }
-    void cmdPresentLoadSetter(const char* args) {
-        stdListSetter(&xl320::Controller::setPresentLoad, args);
-    }
-    void cmdPresentVoltageSetter(const char* args) {
-        stdListSetter(&xl320::Controller::setPresentVoltage, args);
-    }
-    void cmdPresentTemperatureSetter(const char* args) {
-        stdListSetter(&xl320::Controller::setPresentTemperature, args);
-    }
-
-    void cmdRegisteredInstructionSetter(const char* args);   
-    void cmdMovingSetter(const char* args);                  
+    
     void cmdHardwareErrorSetter(const char* args);           
     void cmdPunchSetter(const char* args);                   
 
