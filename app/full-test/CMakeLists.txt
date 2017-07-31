@@ -1,0 +1,24 @@
+MESSAGE("[ in] ${CMAKE_CURRENT_LIST_FILE}")
+
+# Boost
+SET(Boost_USE_STATIC_LIBS OFF)
+SET(Boost_USE_MULTITHREAD ON)
+FIND_PACKAGE(Boost REQUIRED system)
+INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS})
+
+ADD_EXECUTABLE(
+    full-test
+    main.cxx
+    )
+
+SET_PROPERTY(
+    TARGET   full-test
+    PROPERTY CXX_STANDARD 14
+    )
+
+TARGET_LINK_LIBRARIES(
+    full-test
+    ${Boost_LIBRARIES}
+    )
+
+MESSAGE("[out] ${CMAKE_CURRENT_LIST_FILE}")
