@@ -5,7 +5,7 @@
 using namespace xl320;
 
 // Uncomment to debug
-#define XL320Controller_DEBUG
+// #define XL320Controller_DEBUG
 
 /* ============================================================================
  *
