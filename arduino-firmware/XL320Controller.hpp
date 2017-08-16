@@ -33,7 +33,7 @@ public:
 
     //! Flag to tell that the buffer is empty
     static constexpr int RxBufferEmpty = -42;
-    static constexpr unsigned long RxBaseTimeout = 80000;
+    static constexpr unsigned long RxBaseTimeout = 100000;
 
     //! Data about control table
     //!
