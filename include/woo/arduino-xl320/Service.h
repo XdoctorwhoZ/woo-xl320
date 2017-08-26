@@ -22,31 +22,40 @@
  #define TEST_COMMON_DLLSPEC Q_DECL_IMPORT
 #endif
 
+// ---
+namespace woo { namespace arduino_xl320 {
 
 // ---
-namespace woo { namespace xl320 {
+class Controller;
 
-
-//! 
+//! Main class of arduino xl320
+//! Control reception and emittion of data
 //!
 class TEST_COMMON_DLLSPEC Service : public QObject
 {
     Q_OBJECT
 
-    //! Serial port device
-    QString mDevName;
-    
-    //! Serial port controller
-    QSerialPort* mSerialPort;
+    //! If command does not end before this time, command is declared failure
+    static constexpr int CommandTimeout = 5000;
 
-    // Port configuration
-    QString                     mPortname;
-    qint32                      mBaudrate;
-    QSerialPort::DataBits       mDatabits;
-    QSerialPort::StopBits       mStopbits;
-    QSerialPort::Parity         mParity;
-    QSerialPort::FlowControl    mFlowctrl;
+    //! Serial configuration
+    struct
+    {
+        //! Serial port device
+        QString devName;
+        
+        //! Serial port controller
+        QSerialPort* port;
 
+        // Port configuration
+        QString                     portname;
+        qint32                      baudrate;
+        QSerialPort::DataBits       databits;
+        QSerialPort::StopBits       stopbits;
+        QSerialPort::Parity         parity;
+        QSerialPort::FlowControl    flowctrl;        
+    }
+    mSerial;
 
     //! Data to control command execution
     struct
@@ -61,6 +70,9 @@ class TEST_COMMON_DLLSPEC Service : public QObject
 
         //! Commands that must be send to the arduino controller
         QList<Command> queue;
+
+        //! Timer to control command timeout
+        QTimer timerOut;        
     }
     mCommandCtrl;
 
@@ -68,26 +80,30 @@ class TEST_COMMON_DLLSPEC Service : public QObject
     struct
     {
         // Result for test
-        int test;
+        bool test;
         // Result for ping command
         QList<int> ping;
+
+        // map<int, servo result>
     }
     mResult;
 
-
-
 public:
 
+    // Constructor
     Service(QObject* qparent = 0);
     ~Service();
 
     //! To set the serial port name that must be used
-    void setDevName(const QString& dev) { mDevName = dev; }
+    void setDevName(const QString& dev) { mSerial.devName = dev; }
 
     //! To start serial port and begin using the service
     int start();
     //! To stop the service
     void stop();
+
+    //! Create a controller for the given servos ids
+    Controller getController(const QList<int>& ids);
 
     //! Return true if a command is current executed
     //!
@@ -100,21 +116,31 @@ public:
                         , Command::Type type = Command::Type::None
                         , const QString& value = "");
 
-    // To test communication with arduino
-    // bool isTestOver();
-    // bool getTestResult();
 
+    // Basic getters
+    bool getTestResult() const { return mResult.test; }
+    QList<int> getPingResult() const { return mResult.ping; }
 
 private:
+
+    //! Function to reset system after command end
+    void endCommand();
 
     //! Parse data line from arduino
     //!
     void parseData(const QByteArray& data);
 
+    // Parse functions
+    void parseDataTest(const QByteArray& data);
+    void parseDataGetter(const QByteArray& data);
+    void parseDataSetter(const QByteArray& data);
+    void parseDataComment(const QByteArray& data);
+
 public slots:
 
     //! To send test request
     void sendTest();
+    void sendPing();
 
 private slots:
 
@@ -126,6 +152,9 @@ private slots:
     //! Read data from serial port when they are ready
     //!
     void readData();
+
+    //! To manage command timeout when arduino does not reply
+    void manageCommandTimeout();
 
 signals:
 
@@ -139,7 +168,7 @@ signals:
 
 };
 
-} // xl320
+} // arduino_xl320
 } // woo
 
 #endif // WOO_XL320_SERVICE_H

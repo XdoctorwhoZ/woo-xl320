@@ -13,9 +13,11 @@ ADD_LIBRARY(
     SHARED
     Command.cxx
     Service.cxx
+    Controller.cxx
     ${CMAKE_CURRENT_LIST_DIR}/../include/woo/arduino-xl320/Command.h
     ${CMAKE_CURRENT_LIST_DIR}/../include/woo/arduino-xl320/Service.h
-
+    ${CMAKE_CURRENT_LIST_DIR}/../include/woo/arduino-xl320/ServoData.h
+    ${CMAKE_CURRENT_LIST_DIR}/../include/woo/arduino-xl320/Controller.h
     )
 
 

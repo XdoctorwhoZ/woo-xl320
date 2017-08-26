@@ -7,7 +7,7 @@
 #include <QtSerialPort/QSerialPort>
 
 // ---
-namespace woo { namespace xl320 {
+namespace woo { namespace arduino_xl320 {
 
 //! Class to manage command that must be send
 class Command
@@ -98,6 +98,10 @@ public:
         : mIds(ids), mName(name), mType(type), mValue(value)
     { }
 
+    // basic getters
+    Name getName() const { return mName; }
+    Type getType() const { return mType; }
+
     //! Return true if the command needs some servos selection
     bool needIdSelection() const;
 
@@ -106,7 +110,7 @@ public:
 
 };
 
-} // xl320
+} // arduino_xl320
 } // woo
 
 #endif // WOO_XL320_COMMAND_H

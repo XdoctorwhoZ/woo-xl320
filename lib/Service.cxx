@@ -1,23 +1,28 @@
 // woo
 #include <woo/arduino-xl320/Service.h>
-// #include <woo/arduino-xl320/Controller.h>
+#include <woo/arduino-xl320/Controller.h>
 
 // Qt
 #include <QDebug>
 
 // ---
-using namespace woo::xl320;
+using namespace woo::arduino_xl320;
 
 /* ============================================================================
  *
  * */
 Service::Service(QObject* qparent)
     : QObject(qparent)
-    , mSerialPort(0)
 {
+    // Initialize serial port config
+    mSerial.port = 0;
+
     // Initialize command control
     mCommandCtrl.isRunning = false;
     mCommandCtrl.currentIds = "";
+
+    // Init permanent connexion
+    connect(&mCommandCtrl.timerOut, &QTimer::timeout, this, &Service::manageCommandTimeout);
 }
 
 /* ============================================================================
@@ -34,29 +39,29 @@ Service::~Service()
 int Service::start()
 {
     // Set default configuration
-    mPortname = mDevName;
-    mBaudrate = 115200;
-    mDatabits = QSerialPort::DataBits::Data8;
-    mStopbits = QSerialPort::StopBits::OneStop;
-    mParity   = QSerialPort::Parity::NoParity;
-    mFlowctrl = QSerialPort::FlowControl::NoFlowControl;
+    mSerial.portname = mSerial.devName;
+    mSerial.baudrate = 115200;
+    mSerial.databits = QSerialPort::DataBits::Data8;
+    mSerial.stopbits = QSerialPort::StopBits::OneStop;
+    mSerial.parity   = QSerialPort::Parity::NoParity;
+    mSerial.flowctrl = QSerialPort::FlowControl::NoFlowControl;
 
     // Create serial port
-    if(mSerialPort == 0) {
-        mSerialPort = new QSerialPort(this);
-        connect(mSerialPort, &QSerialPort::readyRead, this, &Service::readData);
+    if(mSerial.port == 0) {
+        mSerial.port = new QSerialPort(this);
+        connect(mSerial.port, &QSerialPort::readyRead, this, &Service::readData);
     }
 
     // Set serial configuration
-    mSerialPort->setPortName   ( mPortname );
-    mSerialPort->setBaudRate   ( mBaudrate );
-    mSerialPort->setDataBits   ( mDatabits );
-    mSerialPort->setStopBits   ( mStopbits );
-    mSerialPort->setParity     ( mParity   );
-    mSerialPort->setFlowControl( mFlowctrl );
+    mSerial.port->setPortName   ( mSerial.portname );
+    mSerial.port->setBaudRate   ( mSerial.baudrate );
+    mSerial.port->setDataBits   ( mSerial.databits );
+    mSerial.port->setStopBits   ( mSerial.stopbits );
+    mSerial.port->setParity     ( mSerial.parity   );
+    mSerial.port->setFlowControl( mSerial.flowctrl );
 
     // Open port and check success
-    if (!mSerialPort->open(QIODevice::ReadWrite)) {
+    if (!mSerial.port->open(QIODevice::ReadWrite)) {
         return 1;
     }
 
@@ -69,13 +74,21 @@ int Service::start()
  * */
 void Service::stop()
 {
-    if(mSerialPort == 0)
+    if(mSerial.port == 0)
     {
         // Close the port
-        mSerialPort->close();
-        delete mSerialPort;
-        mSerialPort = 0;
+        mSerial.port->close();
+        delete mSerial.port;
+        mSerial.port = 0;
     }
+}
+
+/* ============================================================================
+ *
+ * */
+Controller Service::getController(const QList<int>& ids)
+{
+    return Controller(this, ids);
 }
 
 /* ============================================================================
@@ -95,37 +108,26 @@ void Service::registerCommand( const QString& ids
  * */
 void Service::sendTest()
 {
-    // Register test command
     registerCommand();
 }
 
 /* ============================================================================
  *
  * */
-// bool Service::isTestOver()
-// {
-//     return mIsTestRunning;
-// }
+void Service::sendPing()
+{
+    registerCommand("", Command::Name::Ping, Command::Type::Getter);
+}
 
-// /* ============================================================================
-//  *
-//  * */
-// bool Service::getTestResult()
-// {
-
-// }
-
-//  ============================================================================
-//  *
-//  * 
-// void Service::ping()
-// {
-//     QByteArray command = "XX\r\nXX+PING?\r\n";
-
-//     qDebug() << "PING : " << command;
-
-//     mSerialPort->write(command);
-// }
+/* ============================================================================
+ *
+ * */
+void Service::endCommand()
+{
+    mCommandCtrl.isRunning = false;
+    mCommandCtrl.timerOut.stop();
+    QTimer::singleShot(0, this, &Service::sendNextCommand);
+}
 
 /* ============================================================================
  *
@@ -145,29 +147,82 @@ void Service::parseData(const QByteArray& data)
     {
         case 'O':
         {
+            parseDataTest(data);
             qDebug() << "ok - " << data;
             break;
         }
         case '+':
         {
             qDebug() << "++ - " << data;
+            parseDataGetter(data);
             break;
         }
         case '=':
         {
             qDebug() << "-- - " << data;
+            parseDataSetter(data);
             break;
         }
         case '#':
         {
             qDebug() << "## - " << data;
+            parseDataComment(data);
             break;
         }
         default:
         {
-            qDebug() << "Unkown?" << data;
+            qDebug() << "Unkown? (" << data << ")";
         }
     }
+}
+
+/* ============================================================================
+ *
+ * */
+void Service::parseDataTest(const QByteArray& data)
+{
+    // if( data.size() < 4 ) {
+
+    // }
+
+    // if( )
+
+
+    // test result ok
+    mResult.test = true;
+
+    // End command
+    endCommand();
+}
+
+/* ============================================================================
+ *
+ * */
+void Service::parseDataGetter(const QByteArray& data)
+{
+    int dotIndex = data.lastIndexOf(':');
+    int endIndex = data.lastIndexOf('\r');
+
+    QByteArray cmdNameStr = data.mid(1, dotIndex-1);
+    QByteArray cmdResultStr = data.mid(dotIndex+1, (endIndex-(dotIndex+1)));
+
+    qDebug() << cmdResultStr;
+}
+
+/* ============================================================================
+ *
+ * */
+void Service::parseDataSetter(const QByteArray& data)
+{
+
+}
+
+/* ============================================================================
+ *
+ * */
+void Service::parseDataComment(const QByteArray& data)
+{
+
 }
 
 /* ============================================================================
@@ -186,17 +241,28 @@ void Service::sendNextCommand()
 
     const Command& cmd = mCommandCtrl.queue.front();
 
-    if( cmd.needIdSelection() )
-    {
+    // if( cmd.needIdSelection() )
+    // {
 
+    // }
+
+
+    if(cmd.getName() == Command::Name::Test) {
+        mResult.test = false;        
     }
 
-    // qDebug() << ;
+    // Command is now running
+    mCommandCtrl.isRunning = true;
 
-    mSerialPort->write(cmd.toData());
+    // Remove the command that has been sent
+    mCommandCtrl.queue.pop_front();
 
-    // mCommandCtrl.isRunning = true;
+    // Send command
+    qDebug() << "send: " << cmd.toData();
+    mSerial.port->write(cmd.toData());
 
+    // Start timeout timer
+    mCommandCtrl.timerOut.start(CommandTimeout);
 }
 
 /* ============================================================================
@@ -206,10 +272,10 @@ void Service::readData()
 {
     int size;
     char rBuffer[512];
-    while( mSerialPort->canReadLine() )
+    while( mSerial.port->canReadLine() )
     {
         // Read the line
-        size = mSerialPort->readLine(rBuffer, sizeof(rBuffer));
+        size = mSerial.port->readLine(rBuffer, sizeof(rBuffer));
 
         // Create an array to parse this line
         QByteArray line(rBuffer, size);
@@ -217,4 +283,13 @@ void Service::readData()
         // Parse data
         parseData(line);
     }
+}
+
+/* ============================================================================
+ *
+ * */
+void Service::manageCommandTimeout()
+{
+    qDebug() << "timeout";
+    endCommand();
 }

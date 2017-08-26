@@ -1,42 +1,39 @@
-#ifndef WOO_XL320_CONTROLLER_H
-#define WOO_XL320_CONTROLLER_H
+#ifndef WOO_ARDUINO_XL320_CONTROLLER_H
+#define WOO_ARDUINO_XL320_CONTROLLER_H
 
-#include <unistd.h>
-
-#include <iostream>
-
-// #include <boost/bind.hpp>
-// #include <boost/thread.hpp>
-
-// #include <boost/asio.hpp>
-// #include <boost/asio/serial_port.hpp>
-
-// #include <boost/system/error_code.hpp>
-// #include <boost/system/system_error.hpp>
+// Qt
+#include <QList>
 
 // ---
-namespace woo { namespace xl320 {
+namespace woo { namespace arduino_xl320 {
 
-//! 
+// ---
+class Service;
+
+//! Class to control group of servos
 //!
 class Controller
 {
+    //! Service used
+    Service* mService;
 
-//     boost::asio::io_service mIoService;
+    //! Ids of the controlled servos
+    QList<int> mIds;
 
-//     boost::asio::serial_port mSerialPort;
+public:
 
-//     boost::mutex mutex_;
+    //! Constructor
+    Controller(Service* service, const QList<int>& ids);
 
-
-
+    // set(name , value)
+    // get(name)
 
 };
 
 
 
 
-} // xl320
+} // arduino_xl320
 } // woo
 
-#endif // WOO_XL320_CONTROLLER_H
+#endif // WOO_ARDUINO_XL320_CONTROLLER_H

@@ -26,7 +26,7 @@ int main(int argc, char *argv[])
     QCoreApplication a(argc, argv);
 
     // Create xl320 comminucation service
-    woo::xl320::Service xservice;
+    woo::arduino_xl320::Service xservice;
     xservice.setDevName(QString(argv[1]));
 
     // Start this service
@@ -36,12 +36,16 @@ int main(int argc, char *argv[])
     }
 
     // Send test
-    QTimer::singleShot(2000, &xservice, &woo::xl320::Service::sendTest);
-    QTimer::singleShot(2000, &xservice, &woo::xl320::Service::sendTest);
-    QTimer::singleShot(2000, &xservice, &woo::xl320::Service::sendTest);
-    QTimer::singleShot(2000, &xservice, &woo::xl320::Service::sendTest);
-    QTimer::singleShot(2000, &xservice, &woo::xl320::Service::sendTest);
-    QTimer::singleShot(2000, &xservice, &woo::xl320::Service::sendTest);
+    QTimer::singleShot(2000, &xservice, &woo::arduino_xl320::Service::sendTest);
+    QTimer::singleShot(2000, &xservice, &woo::arduino_xl320::Service::sendPing);
+    QTimer::singleShot(2000, &xservice, &woo::arduino_xl320::Service::sendTest);
+    QTimer::singleShot(2000, &xservice, &woo::arduino_xl320::Service::sendTest);
+    QTimer::singleShot(2000, &xservice, &woo::arduino_xl320::Service::sendTest);
+    QTimer::singleShot(2000, &xservice, &woo::arduino_xl320::Service::sendTest);
+
+
+
+
 
     return a.exec();
 }

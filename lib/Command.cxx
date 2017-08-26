@@ -5,7 +5,7 @@
 #include <stdexcept>
 
 // ---
-using namespace woo::xl320;
+using namespace woo::arduino_xl320;
 
 /* ============================================================================
  *
@@ -73,12 +73,14 @@ QByteArray Command::toData() const
     QByteArray cmd = "XX";
     if ( mName != Name::Test )
     {
+        cmd += '+';
         cmd += NameInfos[mName].name;
         switch(mType)
         {
             case Type::Getter:
             {
                 cmd += "?";
+                break;
             }
             case Type::Setter:
             {
@@ -90,10 +92,12 @@ QByteArray Command::toData() const
                 {
                     cmd += "=" + mValue;
                 }
+                break;
             }
             default:
             {
                 throw std::invalid_argument("Wrong Command Type");
+                break;
             }
         }
     }

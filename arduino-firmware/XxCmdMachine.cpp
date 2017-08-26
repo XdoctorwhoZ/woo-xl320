@@ -222,7 +222,7 @@ void XxCmdMachine::replyGetterWithIntList(const char* cmd, const int* list, int 
         if(i!=0) msg += ',';
         msg += (int) list[i];
     }
-    msg += "\r\nOK\r\n";
+    msg += "\r\n";
     reply(msg.c_str());
 }
 
