@@ -6,16 +6,16 @@ MESSAGE("[ in] ${CMAKE_CURRENT_LIST_FILE}")
 add_definitions(-DTEST)
 
 
-# QT5_WRAP_CPP( MOCS_HDRS ${CMAKE_CURRENT_LIST_DIR}/../include/woo/arduino-xl320/Service.h )
-
 
 # - Library
 ADD_LIBRARY(
     woo-arduino-xl320
     SHARED
+    Command.cxx
     Service.cxx
+    ${CMAKE_CURRENT_LIST_DIR}/../include/woo/arduino-xl320/Command.h
     ${CMAKE_CURRENT_LIST_DIR}/../include/woo/arduino-xl320/Service.h
-   # ${MOCS_HDRS}
+
     )
 
 
@@ -24,6 +24,5 @@ QT5_USE_MODULES(
     Core SerialPort
     )
 
-    # Controller.cxx
 
 MESSAGE("[out] ${CMAKE_CURRENT_LIST_FILE}")

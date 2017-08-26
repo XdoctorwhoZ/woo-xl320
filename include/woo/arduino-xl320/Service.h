@@ -7,7 +7,12 @@
 
 // Qt
 #include <QTimer>
+#include <QQueue>
 #include <QtSerialPort/QSerialPort>
+
+// woo
+#include "Command.h"
+
 
 #if defined TEST
 // #error test
@@ -21,7 +26,6 @@
 // ---
 namespace woo { namespace xl320 {
 
-// 
 
 //! 
 //!
@@ -31,29 +35,9 @@ class TEST_COMMON_DLLSPEC Service : public QObject
 
     //! Serial port device
     QString mDevName;
-
-    // //! Mutex for the asio service thread
-    // boost::mutex mMutex;
-
-    // //! Asio service
-    // boost::asio::io_service mIoService;
     
     //! Serial port controller
     QSerialPort* mSerialPort;
-
-    // //! Flag to telle that \r has been received
-    // bool rFlag;
-
-    // //! Read buffer config
-    // static constexpr int ReadBufRawSize = 512;
-    // char mReadBufRaw[ReadBufRawSize];
-
-    // //! Ready data buffer
-    // std::string mReadBufStr;
-
-    // boost::asio::streambuf bbbb;
-
-    // boost::thread mIoServiceThread;
 
     // Port configuration
     QString                     mPortname;
@@ -62,54 +46,98 @@ class TEST_COMMON_DLLSPEC Service : public QObject
     QSerialPort::StopBits       mStopbits;
     QSerialPort::Parity         mParity;
     QSerialPort::FlowControl    mFlowctrl;
-    
-    // Test control
-    bool mTestResult;
-    bool mIsTestRunnning;
+
+
+    //! Data to control command execution
+    struct
+    {
+        //! Running command indicator
+        //! pass true when command is sent to arduino
+        //! pass false when command result has been received
+        bool isRunning;
+
+        //! Current selected ids
+        QString currentIds;
+
+        //! Commands that must be send to the arduino controller
+        QList<Command> queue;
+    }
+    mCommandCtrl;
+
+    //! Data to store results
+    struct
+    {
+        // Result for test
+        int test;
+        // Result for ping command
+        QList<int> ping;
+    }
+    mResult;
+
+
 
 public:
 
     Service(QObject* qparent = 0);
-    // ~Service();
+    ~Service();
 
+    //! To set the serial port name that must be used
     void setDevName(const QString& dev) { mDevName = dev; }
 
-    void start();
-    // void stop();
+    //! To start serial port and begin using the service
+    int start();
+    //! To stop the service
+    void stop();
 
+    //! Return true if a command is current executed
+    //!
+    bool isCommandRunning() const { return mCommandCtrl.isRunning; }
+
+    //! Function to send a command to arduino
+    //!
+    void registerCommand( const QString& ids = ""
+                        , Command::Name name = Command::Name::Test
+                        , Command::Type type = Command::Type::None
+                        , const QString& value = "");
 
     // To test communication with arduino
+    // bool isTestOver();
+    // bool getTestResult();
+
+
+private:
+
+    //! Parse data line from arduino
+    //!
+    void parseData(const QByteArray& data);
+
+public slots:
+
+    //! To send test request
     void sendTest();
-    bool isTestOver();
-    bool getTestResult();
 
+private slots:
 
-    void ping();
-    // getController(int )
+    //! Take the next command in the queue and send it
+    //! If a command is already running, a timer wil recall this function later
+    //!
+    void sendNextCommand();
 
-
-    // void asyncRead();
-    // void onDataReceive(const boost::system::error_code& ec, size_t bytes_transferred);
-    // void onDataReady(const std::string& data);
-
-// private slots:
-
-
+    //! Read data from serial port when they are ready
+    //!
     void readData();
 
-
-
 signals:
+
+    //! Emitted when the running command has received an answers or timeout
+    //!
+    void commandFinish();
 
     //! Emitted when the result of the test is ready to be read
     //!
     void testResultReady(bool result);
 
-
 };
-
-
-
 
 } // xl320
 } // woo

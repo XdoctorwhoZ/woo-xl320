@@ -13,24 +13,25 @@ using namespace woo::xl320;
  * */
 Service::Service(QObject* qparent)
     : QObject(qparent)
-    , mSerialPort(new QSerialPort(this))
-    , mIsTestRunnning(false)
+    , mSerialPort(0)
 {
-    connect(mSerialPort, &QSerialPort::readyRead, this, &Service::readData);
+    // Initialize command control
+    mCommandCtrl.isRunning = false;
+    mCommandCtrl.currentIds = "";
 }
 
 /* ============================================================================
  *
  * */
-// Service::~Service()
-// {
-//     // stop();
-// }
+Service::~Service()
+{
+    stop();
+}
 
 /* ============================================================================
  *
  * */
-void Service::start()
+int Service::start()
 {
     // Set default configuration
     mPortname = mDevName;
@@ -40,6 +41,12 @@ void Service::start()
     mParity   = QSerialPort::Parity::NoParity;
     mFlowctrl = QSerialPort::FlowControl::NoFlowControl;
 
+    // Create serial port
+    if(mSerialPort == 0) {
+        mSerialPort = new QSerialPort(this);
+        connect(mSerialPort, &QSerialPort::readyRead, this, &Service::readData);
+    }
+
     // Set serial configuration
     mSerialPort->setPortName   ( mPortname );
     mSerialPort->setBaudRate   ( mBaudrate );
@@ -48,19 +55,39 @@ void Service::start()
     mSerialPort->setParity     ( mParity   );
     mSerialPort->setFlowControl( mFlowctrl );
 
-
-    if (mSerialPort->open(QIODevice::ReadWrite)) {
-
-
-        
-
-
-    } else {
-        // QMessageBox::critical(this, tr("Error"), serial->errorString());
-
-        // showStatusMessage(tr("Open error"));
+    // Open port and check success
+    if (!mSerialPort->open(QIODevice::ReadWrite)) {
+        return 1;
     }
 
+    // Success
+    return 0;
+}
+
+/* ============================================================================
+ *
+ * */
+void Service::stop()
+{
+    if(mSerialPort == 0)
+    {
+        // Close the port
+        mSerialPort->close();
+        delete mSerialPort;
+        mSerialPort = 0;
+    }
+}
+
+/* ============================================================================
+ *
+ * */
+void Service::registerCommand( const QString& ids
+                             , Command::Name name
+                             , Command::Type type
+                             , const QString& value)
+{
+    mCommandCtrl.queue.push_back(Command(ids, name, type, value));
+    QTimer::singleShot(0, this, &Service::sendNextCommand);
 }
 
 /* ============================================================================
@@ -68,50 +95,108 @@ void Service::start()
  * */
 void Service::sendTest()
 {
-    mIsTestRunnning = true;
-
-    QByteArray command = "XX\r\n";
-
-    qDebug() << "PING : " << command;
-
-    mSerialPort->write(command);
+    // Register test command
+    registerCommand();
 }
 
 /* ============================================================================
  *
  * */
-bool Service::isTestOver()
-{
-    return mIsTestRunnning;
-}
+// bool Service::isTestOver()
+// {
+//     return mIsTestRunning;
+// }
 
-/* ============================================================================
- *
- * */
-bool Service::getTestResult()
-{
-
-}
-
-
-/* ============================================================================
- *
- * */
-// void Service::stop()
+// /* ============================================================================
+//  *
+//  * */
+// bool Service::getTestResult()
 // {
 
+// }
+
+//  ============================================================================
+//  *
+//  * 
+// void Service::ping()
+// {
+//     QByteArray command = "XX\r\nXX+PING?\r\n";
+
+//     qDebug() << "PING : " << command;
+
+//     mSerialPort->write(command);
 // }
 
 /* ============================================================================
  *
  * */
-void Service::ping()
+void Service::parseData(const QByteArray& data)
 {
-    QByteArray command = "XX\r\nXX+PING?\r\n";
+    qDebug() << data;
 
-    qDebug() << "PING : " << command;
+    // Check if data is not empty
+    if (data.isEmpty()) {
+        return;
+    }
+ 
+    // Get first char
+    char firstChar = data[0];
+    switch(firstChar)
+    {
+        case 'O':
+        {
+            qDebug() << "ok - " << data;
+            break;
+        }
+        case '+':
+        {
+            qDebug() << "++ - " << data;
+            break;
+        }
+        case '=':
+        {
+            qDebug() << "-- - " << data;
+            break;
+        }
+        case '#':
+        {
+            qDebug() << "## - " << data;
+            break;
+        }
+        default:
+        {
+            qDebug() << "Unkown?" << data;
+        }
+    }
+}
 
-    mSerialPort->write(command);
+/* ============================================================================
+ *
+ * */
+void Service::sendNextCommand()
+{
+    qDebug() << "command";
+
+    // No more command to send
+    if( mCommandCtrl.queue.isEmpty() ) return;
+
+    // A command is already running
+    if( isCommandRunning() ) return;
+
+
+    const Command& cmd = mCommandCtrl.queue.front();
+
+    if( cmd.needIdSelection() )
+    {
+
+    }
+
+    // qDebug() << ;
+
+    mSerialPort->write(cmd.toData());
+
+    // mCommandCtrl.isRunning = true;
+
 }
 
 /* ============================================================================
@@ -119,119 +204,17 @@ void Service::ping()
  * */
 void Service::readData()
 {
-    QByteArray data = mSerialPort->readAll();
-    qDebug() << data;
+    int size;
+    char rBuffer[512];
+    while( mSerialPort->canReadLine() )
+    {
+        // Read the line
+        size = mSerialPort->readLine(rBuffer, sizeof(rBuffer));
+
+        // Create an array to parse this line
+        QByteArray line(rBuffer, size);
+
+        // Parse data
+        parseData(line);
+    }
 }
-
-/* ============================================================================
- *
- * */
-// void Service::asyncRead()
-// {
-    // // Check if port is open
-    // if (!mSerialPort.is_open()) {
-    //     std::cerr << "Error : Serial port is not opened" << std::endl;
-    //     return;
-    // }
-
-
-    // std::cout << "async read start" << std::endl;
-
-
-    // async_read_until(
-    //     mSerialPort,
-    //     bbbb,
-    //     '\n',
-    //     boost::bind(
-    //         &Service::onDataReceive,
-    //         this, boost::asio::placeholders::error, 
-    //         boost::asio::placeholders::bytes_transferred)
-    // );
-
-
-    // Start async read
-    // mSerialPort.async_read_some( 
-    //     boost::asio::buffer(mReadBufRaw, ReadBufRawSize),
-    //     boost::bind(
-    //         &Service::onDataReceive,
-    //         this, boost::asio::placeholders::error, 
-    //         boost::asio::placeholders::bytes_transferred));
-// }
-
-/* ============================================================================
- *
- * */
-// void Service::onDataReceive(const boost::system::error_code& ec, size_t bytes_transferred)
-// {
-    // First lock
-    // boost::mutex::scoped_lock look(mMutex);
-
-    // mMutex.lock();
-
-    // // Reception erro
-    // if (ec)
-    // {
-    //     if(ec == boost::asio::error::eof)
-    //     {
-    //         std::cerr << "Warning : serial connection closed" << std::endl;
-    //         // asyncRead();
-    //     }
-    //     else
-    //     {
-    //         std::cerr << "Warning : " << ec.message() << std::endl;
-    //         asyncRead();
-    //     }
-    //     return;
-    // }
-
-    // // log
-    // std::cout << "Data Received : " << bytes_transferred << std::endl;
-
-
-    // std::string s( (std::istreambuf_iterator<char>(&bbbb)), std::istreambuf_iterator<char>() );
-    // onDataReady(s);
-
-    // mMutex.unlock();
-
-    // // 
-    // for (int i=0 ; i<bytes_transferred ; ++i)
-    // {
-    //     char c = mReadBufRaw[i];
-    //     switch(c)
-    //     {
-    //         case '\r': {
-    //             rFlag = true;
-    //         }
-    //         break;
-
-    //         case '\n': {
-    //             if(rFlag)
-    //             {
-    //                 this->onDataReady(mReadBufStr);
-    //                 mReadBufStr.clear();
-    //             }
-    //         }
-    //         break;
-        
-    //         default:
-    //         {   
-    //             mReadBufStr += c;
-    //             rFlag = false;
-    //         }
-    //     }
-    // }
-
-
-    // std::cout << data << std::endl;
-
-    //
-    // asyncRead();
-// }
-
-/* ============================================================================
- *
- * */
-// void Service::onDataReady(const std::string& data)
-// {
-//     std::cout << data << std::endl;
-// }
