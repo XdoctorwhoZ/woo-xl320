@@ -4,6 +4,9 @@
 // Qt
 #include <QList>
 
+//
+#include "Command.h"
+
 // ---
 namespace woo { namespace arduino_xl320 {
 
@@ -19,6 +22,7 @@ class Controller
 
     //! Ids of the controlled servos
     QList<int> mIds;
+    QString mIdsStr;
 
 public:
 
@@ -26,7 +30,9 @@ public:
     Controller(Service* service, const QList<int>& ids);
 
     // set(name , value)
-    // get(name)
+
+    //! To send a getter request
+    void getRqst(Command::Name name);
 
 };
 
