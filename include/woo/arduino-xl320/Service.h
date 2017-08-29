@@ -11,7 +11,10 @@
 #include <QtSerialPort/QSerialPort>
 
 // woo
-#include "Command.h"
+#include "ServiceData.h"
+#include "ServiceSerial.h"
+#include "ServiceCommand.h"
+
 
 
 #if defined TEST
@@ -28,8 +31,9 @@ namespace woo { namespace arduino_xl320 {
 // ---
 class Controller;
 
+
 //! Main class of arduino xl320
-//! Control reception and emittion of data
+//! Control reception and transmission of data
 //!
 class TEST_COMMON_DLLSPEC Service : public QObject
 {
@@ -38,68 +42,25 @@ class TEST_COMMON_DLLSPEC Service : public QObject
     //! If command does not end before this time, command is declared failure
     static constexpr int CommandTimeout = 5000;
 
-    //! Serial configuration
-    struct
-    {
-        //! Serial port device
-        QString devName;
-        
-        //! Serial port controller
-        QSerialPort* port;
+    //! To store data about the arduino state
+    ServiceData mServiceData;
 
-        // Port configuration
-        QString                     portname;
-        qint32                      baudrate;
-        QSerialPort::DataBits       databits;
-        QSerialPort::StopBits       stopbits;
-        QSerialPort::Parity         parity;
-        QSerialPort::FlowControl    flowctrl;        
-    }
-    mSerial;
+    //! To control serial port
+    ServiceSerial mServiceSerial;
 
-    //! Data to control command execution
-    struct
-    {
-        //! Running command indicator
-        //! pass true when command is sent to arduino
-        //! pass false when command result has been received
-        bool isRunning;
+    //! To control command transmission and reception + parsing
+    ServiceCommand mServiceCommand;
 
-        //! Current selected ids
-        QString currentIds;
-
-        //! Commands that must be send to the arduino controller
-        QList<Command> queue;
-
-        //! Timer to control command timeout
-        QTimer timerOut;        
-    }
-    mCommandCtrl;
-
-    //! Data to store results
-    struct
-    {
-        // Result for test
-        bool test;
-        // Result for ping command
-        QList<int> ping;
-
-        // map<int, servo result>
-    }
-    mResult;
 
 public:
 
-    // Constructor
     Service(QObject* qparent = 0);
     ~Service();
 
     //! To set the serial port name that must be used
-    void setDevName(const QString& dev) { mSerial.devName = dev; }
+    void setDevName(const QString& dev) { mServiceSerial.setDevName(dev); }
 
-    //! To start serial port and begin using the service
     int start();
-    //! To stop the service
     void stop();
 
     //! Create a controller for the given servos ids
@@ -107,7 +68,7 @@ public:
 
     //! Return true if a command is current executed
     //!
-    bool isCommandRunning() const { return mCommandCtrl.isRunning; }
+    // bool isCommandRunning() const { return mCmdCtrl.isRunning; }
 
     //! Function to send a command to arduino
     //!
@@ -118,23 +79,9 @@ public:
 
 
     // Basic getters
-    bool getTestResult() const { return mResult.test; }
-    QList<int> getPingResult() const { return mResult.ping; }
+    // bool getTestResult() const { return mResult.test; }
+    // QList<int> getPingResult() const { return mResult.ping; }
 
-private:
-
-    //! Function to reset system after command end
-    void endCommand();
-
-    //! Parse data line from arduino
-    //!
-    void parseData(const QByteArray& data);
-
-    // Parse functions
-    void parseDataTest(const QByteArray& data);
-    void parseDataGetter(const QByteArray& data);
-    void parseDataSetter(const QByteArray& data);
-    void parseDataComment(const QByteArray& data);
 
 public slots:
 
@@ -142,19 +89,6 @@ public slots:
     void sendTest();
     void sendPing();
 
-private slots:
-
-    //! Take the next command in the queue and send it
-    //! If a command is already running, a timer wil recall this function later
-    //!
-    void sendNextCommand();
-
-    //! Read data from serial port when they are ready
-    //!
-    void readData();
-
-    //! To manage command timeout when arduino does not reply
-    void manageCommandTimeout();
 
 signals:
 

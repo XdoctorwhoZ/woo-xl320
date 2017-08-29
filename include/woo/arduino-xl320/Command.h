@@ -1,10 +1,13 @@
-#ifndef WOO_XL320_COMMAND_H
-#define WOO_XL320_COMMAND_H
+#ifndef WOO_ARDUINO_XL320_COMMAND_H
+#define WOO_ARDUINO_XL320_COMMAND_H
 
 // Qt
 #include <QTimer>
 #include <QQueue>
 #include <QtSerialPort/QSerialPort>
+
+// Woo
+#include "Command.h"
 
 // ---
 namespace woo { namespace arduino_xl320 {
@@ -89,6 +92,9 @@ private:
 
 public:
 
+    //!
+    static Name NameStr2Id(const QByteArray& str);
+
     //! Constructor
     Command ( const QString& ids = ""
             , Name name = Name::Test
@@ -113,4 +119,4 @@ public:
 } // arduino_xl320
 } // woo
 
-#endif // WOO_XL320_COMMAND_H
+#endif // WOO_ARDUINO_XL320_COMMAND_H

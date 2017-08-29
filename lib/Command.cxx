@@ -54,6 +54,21 @@ const Command::NameInfo Command::NameInfos[Command::Name::Total] = {
 /* ============================================================================
  *
  * */
+Command::Name Command::NameStr2Id(const QByteArray& str)
+{
+    for(int i=0 ; i<Command::Name::Total ; i++)
+    {
+        const auto& info = Command::NameInfos[i];
+        if( str == QByteArray(info.name) ) {
+            return (Name)i;
+        }
+    }
+    return Name::Total;
+}
+
+/* ============================================================================
+ *
+ * */
 bool Command::needIdSelection() const
 {
     QList<Name> noIdRequired = QList<Name>()
