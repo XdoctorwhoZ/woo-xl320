@@ -4,6 +4,7 @@
 
 // Qt
 #include <QList>
+#include <QString>
 
 // ---
 namespace woo { namespace arduino_xl320 {

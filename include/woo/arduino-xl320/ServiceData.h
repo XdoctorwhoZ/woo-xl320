@@ -14,6 +14,7 @@
 // ---
 namespace woo { namespace arduino_xl320 {
 
+//! Service to manage data received from servos
 //!
 class ServiceData : public QObject
 {
@@ -33,8 +34,16 @@ public:
     ServiceData() { }
     ~ServiceData() { }
 
+public slots:
 
+    //!
+    void setTestResult(bool result);
 
+    //!
+    void setPingResult(const QString& result);
+
+    //!
+    void setServoData(int id, Command::Name name, const QByteArray& value);
 
 };
 

@@ -36,8 +36,7 @@ class ServiceCommand : public QObject
 
 public:
  
-    ServiceCommand() { }
-    ~ServiceCommand() { }
+    ServiceCommand();
 
     //! Function to register a command in the tx queue
     void registerCommand( const QString& ids = ""
@@ -45,20 +44,19 @@ public:
                         , Command::Type type = Command::Type::None
                         , const QString& value = "");
 
-private:
-
     //! Function to reset system after command end
     void endCommand();
-
-    //! Parse data line from arduino
-    //!
-    void parseData(const QByteArray& data);
 
     // Parse functions
     void parseDataTest(const QByteArray& data);
     void parseDataGetter(const QByteArray& data);
     void parseDataSetter(const QByteArray& data);
     void parseDataComment(const QByteArray& data);
+
+public slots:
+
+    //! Parse 
+    void parseInputCmd(const QByteArray& data);
 
 private slots:
 
@@ -69,8 +67,13 @@ private slots:
     //! To manage command timeout when arduino does not reply
     void manageCommandTimeout();
 
-};
+signals:
 
+    //! Emitted when the service receive a getter command answer
+    //! It will allow the update of internal data 
+    void newGetValueReceived(int id, Command::Name name, const QByteArray& value);
+
+};
 
 } // arduino_xl320
 } // woo

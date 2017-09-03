@@ -8,7 +8,6 @@
 // Qt
 #include <QTimer>
 #include <QQueue>
-#include <QtSerialPort/QSerialPort>
 
 // woo
 #include "ServiceData.h"
@@ -50,7 +49,6 @@ class TEST_COMMON_DLLSPEC Service : public QObject
 
     //! To control command transmission and reception + parsing
     ServiceCommand mServiceCommand;
-
 
 public:
 

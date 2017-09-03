@@ -4,20 +4,25 @@
 // Woo
 #include "Command.h"
 
-
 // ---
 namespace woo { namespace arduino_xl320 {
 
-struct ServoData
+//!
+//!
+class ServoData
 {
 
-    uint16_t goalPosition    ;
-    uint16_t goalSpeed       ;
-    uint16_t goalTorque      ;
-    uint16_t presentPosition ;
-    uint16_t presentSpeed    ;
-    uint16_t presentLoad     ;
-    uint8_t  presentVoltage  ;
+    uint16_t mGoalPosition    ;
+    uint16_t mGoalSpeed       ;
+    uint16_t mGoalTorque      ;
+    uint16_t mPresentPosition ;
+    uint16_t mPresentSpeed    ;
+    uint16_t mPresentLoad     ;
+    uint8_t  mPresentVoltage  ;
+
+public:
+
+    ServoData() { }
 
 
     void set(Command::Name name, const QByteArray& value);

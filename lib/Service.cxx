@@ -14,12 +14,17 @@ using namespace woo::arduino_xl320;
 Service::Service(QObject* qparent)
     : QObject(qparent)
 {
+
+    // ServiceData mServiceData;
+    // ServiceSerial mServiceSerial;
+    // ServiceCommand mServiceCommand;
+
+    connect(&mServiceSerial, &ServiceSerial::dataLineReceived, &mServiceCommand, &ServiceCommand::parseInputCmd);
+
     // // Initialize command control
     // mCmdCtrl.isRunning = false;
     // mCmdCtrl.currentIds = "";
 
-    // Init permanent connexion
-    // connect(&mCmdCtrl.timerOut, &QTimer::timeout, this, &Service::manageCommandTimeout);
 }
 
 /* ============================================================================
@@ -43,7 +48,7 @@ int Service::start()
  * */
 void Service::stop()
 {
-    
+    mServiceSerial.stop();
 }
 
 /* ============================================================================

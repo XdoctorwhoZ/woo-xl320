@@ -3,9 +3,10 @@
 #pragma once
 
 // Qt
-#include <QObject>
 #include <QTimer>
 #include <QQueue>
+#include <QObject>
+#include <QByteArray>
 #include <QtSerialPort/QSerialPort>
 
 // ---
@@ -43,6 +44,9 @@ public:
     int start();
     void stop();
 
+    //! Send data to arduino
+    void send(const QByteArray& data);
+
 private slots:
 
     //! Read data from serial port when they are ready
@@ -54,7 +58,6 @@ signals:
     void dataLineReceived(const QByteArray& data);
 
 };
-
 
 } // arduino_xl320
 } // woo

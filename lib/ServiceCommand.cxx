@@ -10,6 +10,15 @@ using namespace woo::arduino_xl320;
 /* ============================================================================
  *
  * */
+ServiceCommand::ServiceCommand()
+    : mIsRunning(0)
+{
+    connect(&mTimerOut, &QTimer::timeout, this, &ServiceCommand::manageCommandTimeout);
+}
+
+/* ============================================================================
+ *
+ * */
 void ServiceCommand::registerCommand( const QString& ids
                              , Command::Name name
                              , Command::Type type
@@ -27,53 +36,6 @@ void ServiceCommand::endCommand()
     // mCmdCtrl.isRunning = false;
     // mCmdCtrl.timerOut.stop();
     // QTimer::singleShot(0, this, &ServiceCommand::sendNextCommand);
-}
-
-/* ============================================================================
- *
- * */
-void ServiceCommand::parseData(const QByteArray& data)
-{
-    qDebug() << data;
-
-    // Check if data is not empty
-    if (data.isEmpty()) {
-        return;
-    }
- 
-    // Get first char
-    char firstChar = data[0];
-    switch(firstChar)
-    {
-        case 'O':
-        {
-            parseDataTest(data);
-            qDebug() << "ok - " << data;
-            break;
-        }
-        case '+':
-        {
-            qDebug() << "++ - " << data;
-            parseDataGetter(data);
-            break;
-        }
-        case '=':
-        {
-            qDebug() << "-- - " << data;
-            parseDataSetter(data);
-            break;
-        }
-        case '#':
-        {
-            qDebug() << "## - " << data;
-            parseDataComment(data);
-            break;
-        }
-        default:
-        {
-            qDebug() << "Unkown? (" << data << ")";
-        }
-    }
 }
 
 /* ============================================================================
@@ -121,6 +83,8 @@ void ServiceCommand::parseDataGetter(const QByteArray& data)
     {
         const int id = currentIdsList[i];
         data[id].set(cmdName, results[i]);
+
+        emit received from arduino(id, cmdname, value)
     }
     
     qDebug() << cmdResultStr;
@@ -144,6 +108,43 @@ void ServiceCommand::parseDataSetter(const QByteArray& data)
 void ServiceCommand::parseDataComment(const QByteArray& data)
 {
 
+}
+
+/* ============================================================================
+ *
+ * */
+void ServiceCommand::parseInputCmd(const QByteArray& data)
+{
+    qDebug() << data;
+
+    // Check if data is not empty
+    if (data.isEmpty()) {
+        return;
+    }
+ 
+    // Get first char
+    char firstChar = data[0];
+    switch(firstChar)
+    {
+        case 'O': parseDataTest(data);      break;
+        case '+': parseDataGetter(data);    break;
+        case '=':
+        {
+            qDebug() << "-- - " << data;
+            parseDataSetter(data);
+            break;
+        }
+        case '#':
+        {
+            qDebug() << "## - " << data;
+            parseDataComment(data);
+            break;
+        }
+        default:
+        {
+            qDebug() << "Unkown? (" << data << ")";
+        }
+    }
 }
 
 /* ============================================================================
