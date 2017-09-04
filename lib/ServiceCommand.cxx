@@ -7,14 +7,8 @@
 // ---
 using namespace woo::arduino_xl320;
 
-/* ============================================================================
- *
- * */
-ServiceCommand::ServiceCommand()
-    : mIsRunning(0)
-{
-    connect(&mTimerOut, &QTimer::timeout, this, &ServiceCommand::manageCommandTimeout);
-}
+// Uncomment to enable more debug info
+#define DEBUG_PLUS 1
 
 /* ============================================================================
  *
@@ -24,8 +18,8 @@ void ServiceCommand::registerCommand( const QString& ids
                              , Command::Type type
                              , const QString& value)
 {
-    // mCmdCtrl.queue.push_back(Command(ids, name, type, value));
-    // QTimer::singleShot(0, this, &ServiceCommand::sendNextCommand);
+    mTxQueue.push_back(Command(ids, name, type, value));
+    QTimer::singleShot(0, this, SLOT(sendNextCommand()) );
 }
 
 /* ============================================================================
@@ -36,6 +30,52 @@ void ServiceCommand::endCommand()
     // mCmdCtrl.isRunning = false;
     // mCmdCtrl.timerOut.stop();
     // QTimer::singleShot(0, this, &ServiceCommand::sendNextCommand);
+}
+
+/* ============================================================================
+ *
+ * */
+void ServiceCommand::parseData(const QByteArray& data)
+{
+    qDebug() << data;
+
+    // Check if data is not empty
+    if (data.isEmpty()) {
+        return;
+    }
+ 
+    // Get first char
+    char firstChar = data[0];
+    switch(firstChar)
+    {
+        case 'O':
+        {
+            parseDataTest(data);
+            qDebug() << "ok - " << data;
+            break;
+        }
+        case '+':
+        {
+            qDebug() << "++ - " << data;
+            parseDataGetter(data);
+            break;
+        }
+        case '=':
+        {
+            parseDataSetter(data);
+            break;
+        }
+        case '#':
+        {
+            qDebug() << "## - " << data;
+            parseDataComment(data);
+            break;
+        }
+        default:
+        {
+            qDebug() << "Unkown? (" << data << ")";
+        }
+    }
 }
 
 /* ============================================================================
@@ -62,36 +102,72 @@ void ServiceCommand::parseDataTest(const QByteArray& data)
  * */
 void ServiceCommand::parseDataGetter(const QByteArray& data)
 {
-    /*
+    #ifdef DEBUG_PLUS
+    qDebug() << "  + parseDataGetter(" << data << ")";
+    #endif
+
     // Getter message
     // +CMD:RESULT_ID0,RESULT_ID1,...,RESULT_ID2\r\n
 
-    // Get elements indexes
+    // Get ':' index
     const int dotIndex = data.lastIndexOf(':');
-    const int endIndex = data.lastIndexOf('\r');
-
-    // Extract strings
-    QByteArray cmdNameStr = data.mid(1, dotIndex-1);
-    QByteArray cmdResultStr = data.mid(dotIndex+1, (endIndex-(dotIndex+1)));
-
-    // Convert name id
-    Command::Name cmdName = Command::NameStr2Id(cmdNameStr);
-
-    // Get result list and store them
-    QList<QByteArray> results = cmdResultStr.split(',');
-    for(int i=0 ; i<currentIdsList.size() ; i++)
+    if (dotIndex == -1)
     {
-        const int id = currentIdsList[i];
-        data[id].set(cmdName, results[i]);
+        QString err = QString("%1:%2 Parse Error ':' not found").arg(__FILE__).arg(__LINE__);
 
-        emit received from arduino(id, cmdname, value)
+        #ifdef DEBUG_PLUS
+        qDebug() << "      - " << err;
+        #endif 
+
+        emit parseErrorOccured(err);
+        return;
     }
-    
-    qDebug() << cmdResultStr;
-    
+
+    // Get '\r' index
+    const int endIndex = data.lastIndexOf('\r');
+    if (endIndex == -1)
+    {
+        QString err = QString("%1:%2 Parse Error '\\r' not found").arg(__FILE__).arg(__LINE__);
+
+        #ifdef DEBUG_PLUS
+        qDebug() << "      - " << err;
+        #endif 
+
+        emit parseErrorOccured(err);
+        return;
+    }
+
+    // Extract name and convert to id
+    QByteArray cmdNameStr = data.mid(1, dotIndex-1);
+    Command::Name cmdName = Command::NameStr2Id(cmdNameStr);
+    if (cmdName == Command::Name::Total)
+    {
+        QString err = QString("%1:%2 Parse Error unknown command '%1'").arg(__FILE__).arg(__LINE__).arg(QString(cmdNameStr));
+
+        #ifdef DEBUG_PLUS
+        qDebug() << "      - " << err;
+        #endif 
+
+        emit parseErrorOccured(err);
+        return;
+    }
+
+    // Get result list and export it
+    QByteArray cmdResultStr = data.mid(dotIndex+1, (endIndex-(dotIndex+1)));
+    QList<QByteArray> results = cmdResultStr.split(',');
+    for(int i=0 ; i<mCurIds.getLis().size() ; i++)
+    {
+        const int id = mCurIds.getLis()[i];
+
+        #ifdef DEBUG_PLUS
+        qDebug() << "      - updateReceived(" << id << ", " << cmdNameStr << ", " << results[i] << ")";
+        #endif 
+
+        emit updateReceived(id, cmdName, results[i]);
+    }
+
     // End command
     endCommand();
-    */
 }
 
 /* ============================================================================
@@ -108,43 +184,6 @@ void ServiceCommand::parseDataSetter(const QByteArray& data)
 void ServiceCommand::parseDataComment(const QByteArray& data)
 {
 
-}
-
-/* ============================================================================
- *
- * */
-void ServiceCommand::parseInputCmd(const QByteArray& data)
-{
-    qDebug() << data;
-
-    // Check if data is not empty
-    if (data.isEmpty()) {
-        return;
-    }
- 
-    // Get first char
-    char firstChar = data[0];
-    switch(firstChar)
-    {
-        case 'O': parseDataTest(data);      break;
-        case '+': parseDataGetter(data);    break;
-        case '=':
-        {
-            qDebug() << "-- - " << data;
-            parseDataSetter(data);
-            break;
-        }
-        case '#':
-        {
-            qDebug() << "## - " << data;
-            parseDataComment(data);
-            break;
-        }
-        default:
-        {
-            qDebug() << "Unkown? (" << data << ")";
-        }
-    }
 }
 
 /* ============================================================================

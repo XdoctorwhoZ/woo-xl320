@@ -4,8 +4,10 @@
 // Qt
 #include <QList>
 
-//
+// Woo
+#include "DllSpec.h"
 #include "Command.h"
+#include "ServoData.h"
 
 // ---
 namespace woo { namespace arduino_xl320 {
@@ -15,29 +17,29 @@ class Service;
 
 //! Class to control group of servos
 //!
-class Controller
+class WOO_ARDUINO_XL320_DLLSPEC Controller
 {
     //! Service used
     Service* mService;
 
     //! Ids of the controlled servos
-    QList<int> mIds;
-    QString mIdsStr;
+    ServoIds mIds;
 
 public:
 
     //! Constructor
     Controller(Service* service, const QList<int>& ids);
 
-    // set(name , value)
+    //! To send a setter command and modify value inside servo
+    void setData(Command::Name name, const QString& value);
 
-    //! To send a getter request
-    void getRqst(Command::Name name);
+    //! To send a getter request and get value of the servo
+    void requestDataUpdate(Command::Name name);
+
+
+    // void getData(Command::Name name);
 
 };
-
-
-
 
 } // arduino_xl320
 } // woo

@@ -36,7 +36,8 @@ class ServiceCommand : public QObject
 
 public:
  
-    ServiceCommand();
+    ServiceCommand() { }
+    ~ServiceCommand() { }
 
     //! Function to register a command in the tx queue
     void registerCommand( const QString& ids = ""
@@ -47,16 +48,15 @@ public:
     //! Function to reset system after command end
     void endCommand();
 
+    //! Parse data line from arduino
+    //!
+    void parseData(const QByteArray& data);
+
     // Parse functions
     void parseDataTest(const QByteArray& data);
     void parseDataGetter(const QByteArray& data);
     void parseDataSetter(const QByteArray& data);
     void parseDataComment(const QByteArray& data);
-
-public slots:
-
-    //! Parse 
-    void parseInputCmd(const QByteArray& data);
 
 private slots:
 
@@ -69,9 +69,11 @@ private slots:
 
 signals:
 
-    //! Emitted when the service receive a getter command answer
-    //! It will allow the update of internal data 
-    void newGetValueReceived(int id, Command::Name name, const QByteArray& value);
+    //! Emitted when error occurs during parsing
+    void parseErrorOccured(QString error);
+
+    // Emitted when data update is received after getter command answer
+    void updateReceived(int id, Command::Name cmd, QByteArray vals);
 
 };
 

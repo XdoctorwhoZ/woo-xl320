@@ -3,7 +3,7 @@ PROJECT(woo-arduino-xl320 CXX)
 MESSAGE("[ in] ${CMAKE_CURRENT_LIST_FILE}")
 
 
-ADD_DEFINITIONS(-DTEST)
+ADD_DEFINITIONS(-DWOO_ARDUINO_XL320_DECL_EXPORT)
 
 
 
@@ -12,12 +12,12 @@ ADD_LIBRARY(
     woo-arduino-xl320
     SHARED
     Command.cxx
+    ServoIds.cxx
+    Controller.cxx
     Service.cxx
     ServiceData.cxx
     ServiceSerial.cxx
     ServiceCommand.cxx
-    ServoIds.cxx
-    Controller.cxx
     ${CMAKE_CURRENT_LIST_DIR}/../include/woo/arduino-xl320/Command.h
     ${CMAKE_CURRENT_LIST_DIR}/../include/woo/arduino-xl320/Service.h
     ${CMAKE_CURRENT_LIST_DIR}/../include/woo/arduino-xl320/ServiceData.h

@@ -12,14 +12,16 @@ using namespace woo::arduino_xl320;
  * */
 ServiceSerial::ServiceSerial()
     : mPort(0)
-{ }
+{
+
+}
 
 /* ============================================================================
  *
  * */
 ServiceSerial::~ServiceSerial()
 {
-    stop();
+
 }
 
 /* ============================================================================
@@ -69,16 +71,6 @@ void ServiceSerial::stop()
         mPort->close();
         delete mPort;
         mPort = 0;
-    }
-}
-
-/* ============================================================================
- *
- * */
-void ServiceSerial::send(const QByteArray& data)
-{
-    if(mPort!=0) {
-        mPort->write(data);
     }
 }
 

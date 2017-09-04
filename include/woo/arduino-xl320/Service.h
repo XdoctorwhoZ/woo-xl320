@@ -1,28 +1,16 @@
 #ifndef WOO_XL320_SERVICE_H
 #define WOO_XL320_SERVICE_H
 
-// #include <unistd.h>
-
-// #include <iostream>
-
 // Qt
 #include <QTimer>
 #include <QQueue>
+#include <QtSerialPort/QSerialPort>
 
 // woo
+#include "DllSpec.h"
 #include "ServiceData.h"
 #include "ServiceSerial.h"
 #include "ServiceCommand.h"
-
-
-
-#if defined TEST
-// #error test
- #define TEST_COMMON_DLLSPEC Q_DECL_EXPORT
-#else
-// #error pastest
- #define TEST_COMMON_DLLSPEC Q_DECL_IMPORT
-#endif
 
 // ---
 namespace woo { namespace arduino_xl320 {
@@ -30,11 +18,10 @@ namespace woo { namespace arduino_xl320 {
 // ---
 class Controller;
 
-
 //! Main class of arduino xl320
 //! Control reception and transmission of data
 //!
-class TEST_COMMON_DLLSPEC Service : public QObject
+class WOO_ARDUINO_XL320_DLLSPEC Service : public QObject
 {
     Q_OBJECT
 
@@ -69,11 +56,11 @@ public:
     // bool isCommandRunning() const { return mCmdCtrl.isRunning; }
 
     //! Function to send a command to arduino
-    //!
-    void registerCommand( const QString& ids = ""
-                        , Command::Name name = Command::Name::Test
-                        , Command::Type type = Command::Type::None
-                        , const QString& value = "");
+    void sendCmd( const QString& ids = ""
+                , Command::Name name = Command::Name::Test
+                , Command::Type type = Command::Type::None
+                , const QString& value = "")
+    { mServiceCommand.registerCommand(ids, name, type, value); }
 
 
     // Basic getters

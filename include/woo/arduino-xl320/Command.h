@@ -92,7 +92,8 @@ private:
 
 public:
 
-    //!
+    //! Return the name enum corresponding to str
+    //! Return Name::Total is name found
     static Name NameStr2Id(const QByteArray& str);
 
     //! Constructor
