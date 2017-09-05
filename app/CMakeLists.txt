@@ -3,6 +3,7 @@ MESSAGE("[ in] ${CMAKE_CURRENT_LIST_FILE}")
 ADD_EXECUTABLE(
     test-01
     test-01/main.cxx
+    test-01/Test01.h
     )
 
 
@@ -12,7 +13,6 @@ ADD_EXECUTABLE(
 TARGET_LINK_LIBRARIES(
     test-01
     woo-arduino-xl320
-    # Qt5::Core Qt5::SerialPort
     )
 
 QT5_USE_MODULES(

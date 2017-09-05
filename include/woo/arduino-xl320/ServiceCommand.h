@@ -8,6 +8,7 @@
 #include <QObject>
 
 // Woo
+#include "DllSpec.h"
 #include "Command.h"
 #include "ServoIds.h"
 
@@ -16,9 +17,12 @@ namespace woo { namespace arduino_xl320 {
 
 //! 
 //!
-class ServiceCommand : public QObject
+class WOO_ARDUINO_XL320_DLLSPEC ServiceCommand : public QObject
 {
     Q_OBJECT
+
+    //! If command does not end before this time, command is declared failure
+    static constexpr int CommandTimeout = 5000;
 
     //! Running command indicator
     //! pass true when command is sent to arduino
@@ -49,7 +53,6 @@ public:
     void endCommand();
 
     //! Parse data line from arduino
-    //!
     void parseData(const QByteArray& data);
 
     // Parse functions
@@ -72,8 +75,11 @@ signals:
     //! Emitted when error occurs during parsing
     void parseErrorOccured(QString error);
 
-    // Emitted when data update is received after getter command answer
+    //! Emitted when data update is received after getter command answer
     void updateReceived(int id, Command::Name cmd, QByteArray vals);
+
+    //! Emitted when this service need to send a command
+    void commandTransmissionRequested(QByteArray data);
 
 };
 

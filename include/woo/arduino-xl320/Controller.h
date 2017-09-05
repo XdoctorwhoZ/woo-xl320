@@ -1,5 +1,6 @@
 #ifndef WOO_ARDUINO_XL320_CONTROLLER_H
 #define WOO_ARDUINO_XL320_CONTROLLER_H
+#pragma once
 
 // Qt
 #include <QList>

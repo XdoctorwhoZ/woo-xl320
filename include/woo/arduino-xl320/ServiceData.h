@@ -28,6 +28,9 @@ class ServiceData : public QObject
     //! Other results
     QMap<int, ServoData> mData;
 
+    //! Store errors that occured
+    QList<QString> mErrors;
+
 public:
  
     ServiceData() { }
@@ -39,7 +42,7 @@ public slots:
     void logParseError(QString error);
 
     //! Update data of the servo id
-    void updateData(int id, Command::Name cmd, QByteArray vals);
+    void updateData(int id, Command::Name cmd, QByteArray value);
 
 };
 

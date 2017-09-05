@@ -21,7 +21,7 @@ ServiceSerial::ServiceSerial()
  * */
 ServiceSerial::~ServiceSerial()
 {
-
+    stop();
 }
 
 /* ============================================================================
@@ -72,6 +72,14 @@ void ServiceSerial::stop()
         delete mPort;
         mPort = 0;
     }
+}
+
+/* ============================================================================
+ *
+ * */
+void ServiceSerial::sendData(const QByteArray& data)
+{
+    mPort->write(data);
 }
 
 /* ============================================================================

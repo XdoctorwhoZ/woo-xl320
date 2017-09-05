@@ -27,9 +27,11 @@ void ServiceCommand::registerCommand( const QString& ids
  * */
 void ServiceCommand::endCommand()
 {
-    // mCmdCtrl.isRunning = false;
-    // mCmdCtrl.timerOut.stop();
-    // QTimer::singleShot(0, this, &ServiceCommand::sendNextCommand);
+    mIsRunning = false;
+    mTimerOut.stop();
+
+    // Try to send next command
+    QTimer::singleShot(0, this, SLOT(sendNextCommand()) );
 }
 
 /* ============================================================================
@@ -54,12 +56,7 @@ void ServiceCommand::parseData(const QByteArray& data)
             qDebug() << "ok - " << data;
             break;
         }
-        case '+':
-        {
-            qDebug() << "++ - " << data;
-            parseDataGetter(data);
-            break;
-        }
+        case '+': parseDataGetter(data); break;
         case '=':
         {
             parseDataSetter(data);
@@ -103,7 +100,7 @@ void ServiceCommand::parseDataTest(const QByteArray& data)
 void ServiceCommand::parseDataGetter(const QByteArray& data)
 {
     #ifdef DEBUG_PLUS
-    qDebug() << "  + parseDataGetter(" << data << ")";
+    qDebug() << "  + ServiceCommand::parseDataGetter(" << data << ")";
     #endif
 
     // Getter message
@@ -191,41 +188,46 @@ void ServiceCommand::parseDataComment(const QByteArray& data)
  * */
 void ServiceCommand::sendNextCommand()
 {
-    /*
-    qDebug() << "command";
+    #ifdef DEBUG_PLUS
+    qDebug() << "  + ServiceCommand::sendNextCommand()";
+    #endif
 
     // No more command to send
-    if( mCmdCtrl.queue.isEmpty() ) return;
-
-    // A command is already running
-    if( isCommandRunning() ) return;
-
-
-    const Command& cmd = mCmdCtrl.queue.front();
-
-    // if( cmd.needIdSelection() )
-    // {
-
-    // }
-
-
-    if(cmd.getName() == Command::Name::Test) {
-        mResult.test = false;        
+    if( mTxQueue.isEmpty() )
+    {
+        #ifdef DEBUG_PLUS
+        qDebug() << "      - Tx queue is empty, no more command to send";
+        #endif
+        return;
     }
 
-    // Command is now running
-    mCmdCtrl.isRunning = true;
+    // A command is already running
+    if( mIsRunning )
+    {
+        #ifdef DEBUG_PLUS
+        qDebug() << "      - A command is already running, wait...";
+        #endif
+        return;
+    }
 
-    // Remove the command that has been sent
-    mCmdCtrl.queue.pop_front();
+    // Get next command from the queue
+    const Command& cmd = mTxQueue.front();
+
+    // Command is now running
+    mIsRunning = true;
 
     // Send command
-    qDebug() << "send: " << cmd.toData();
-    mSerial.port->write(cmd.toData());
+    emit commandTransmissionRequested(cmd.toData());
+
+    #ifdef DEBUG_PLUS
+    qDebug() << "      - command sent(" << cmd.toData() << ")";
+    #endif
 
     // Start timeout timer
-    mCmdCtrl.timerOut.start(CommandTimeout);
-    */
+    mTimerOut.start(CommandTimeout);
+
+    // Remove the command that has been sent
+    mTxQueue.pop_front();
 }
 
 /* ============================================================================

@@ -22,9 +22,13 @@ Service::Service(QObject* qparent)
     // connect(&mCmdCtrl.timerOut, &QTimer::timeout, this, &Service::manageCommandTimeout);
 
 
-    // Connect services each other
+    // command -> data
     connect(&mServiceCommand, &ServiceCommand::updateReceived, &mServiceData, &ServiceData::updateData);
     connect(&mServiceCommand, &ServiceCommand::parseErrorOccured, &mServiceData, &ServiceData::logParseError);
+
+    // command -> serial
+    connect(&mServiceCommand, &ServiceCommand::commandTransmissionRequested, &mServiceSerial, &ServiceSerial::sendData);
+
 }
 
 /* ============================================================================
@@ -48,7 +52,7 @@ int Service::start()
  * */
 void Service::stop()
 {
-    
+    mServiceSerial.stop();
 }
 
 /* ============================================================================

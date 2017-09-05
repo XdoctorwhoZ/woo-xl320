@@ -1,10 +1,8 @@
 // Qt
-#include <QDebug>
 #include <QCoreApplication>
 
-// woo
-#include <woo/arduino-xl320/Service.h>
-// #include <woo/arduino-xl320/Controller.h>
+//
+#include "Test01.h"
 
 // std
 #include <iostream>
@@ -25,29 +23,11 @@ int main(int argc, char *argv[])
     // Start qt core application
     QCoreApplication a(argc, argv);
 
-    // Create xl320 comminucation service
-    woo::arduino_xl320::Service xservice;
-    xservice.setDevName(QString(argv[1]));
-
-    // Start this service
-    if( xservice.start() ) {
-        qDebug() << "Fail to start xl320 service";
-        return 1;
+    // Start test
+    Test01 testObj;
+    if( testObj.start(argv[1]) ) {
+        return 1;   
     }
-
-    // Send test
-    // QTimer::singleShot(2000, &xservice, &woo::arduino_xl320::Service::sendTest);
-    // QTimer::singleShot(2000, &xservice, &woo::arduino_xl320::Service::sendPing);
-    // QTimer::singleShot(2000, &xservice, &woo::arduino_xl320::Service::sendTest);
-    // QTimer::singleShot(2000, &xservice, &woo::arduino_xl320::Service::sendTest);
-    // QTimer::singleShot(2000, &xservice, &woo::arduino_xl320::Service::sendTest);
-    // QTimer::singleShot(2000, &xservice, &woo::arduino_xl320::Service::sendTest);
-
-
-    // woo::arduino_xl320::ServiceCommand sc;
-    // sc.parseDataGetter("+GPOS:500,100,1024\r\n");
-
-
 
     return a.exec();
 }

@@ -1,27 +1,79 @@
-#ifndef WOO_XL320_SERVODATA_H
-#define WOO_XL320_SERVODATA_H
+#ifndef WOO_ARDUINO_XL320_SERVODATA_H
+#define WOO_ARDUINO_XL320_SERVODATA_H
+#pragma once
 
 // Woo
 #include "Command.h"
 #include "ServoIds.h"
 
-
 // ---
 namespace woo { namespace arduino_xl320 {
 
-struct ServoData
+// Rename in just servo
+// data -> registers
+
+// Servo
+//  mRegisterData
+
+//  RegisterMap
+//  RegisterEntry
+    // Area
+    // Address (Hexadecimal)
+    // Size(byet)
+    // Name
+    // Description
+    // Access
+    // Inital Value
+    // Min
+    // Max
+
+
+class Servo
 {
 
-    uint16_t goalPosition    ;
-    uint16_t goalSpeed       ;
-    uint16_t goalTorque      ;
-    uint16_t presentPosition ;
-    uint16_t presentSpeed    ;
-    uint16_t presentLoad     ;
-    uint8_t  presentVoltage  ;
+public:
+
+    enum RegisterAccess
+    {
+        None, Read, Write, ReadWrite
+    };
+
+    struct RegisterEntry
+    {
+        const char*     area;
+        uint8_t         address;
+        uint8_t         size; // in byte
+        const char*     name;
+        const char*     description;
+        RegisterAccess  access;
+        uint32_t        initial_value;
+        uint32_t        min;
+        uint32_t        max;
+    };
+
+    Servo();
+    ~Servo();
+    
+};
 
 
-    void set(Command::Name name, const QByteArray& value);
+
+//!
+//!
+class ServoData
+{
+
+    //! Table of data about the servo
+    uint32_t mData[Command::Name::Total];
+
+public:
+
+    //! Constructor
+    ServoData() { }
+
+    //! To get/set a data value
+    uint32_t get(Command::Name name) { return mData[(int)name]; }
+    void set(Command::Name name, uint32_t value) { mData[(int)name] = value; }
 
 };
 
@@ -29,4 +81,4 @@ struct ServoData
 } // arduino_xl320
 } // woo
 
-#endif // WOO_XL320_SERVODATA_H
+#endif // WOO_ARDUINO_XL320_SERVODATA_H

@@ -43,6 +43,11 @@ public:
     int start();
     void stop();
 
+public slots:
+
+    //! Send data through serial port
+    void sendData(const QByteArray& data);
+
 private slots:
 
     //! Read data from serial port when they are ready

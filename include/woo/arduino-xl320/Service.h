@@ -25,9 +25,6 @@ class WOO_ARDUINO_XL320_DLLSPEC Service : public QObject
 {
     Q_OBJECT
 
-    //! If command does not end before this time, command is declared failure
-    static constexpr int CommandTimeout = 5000;
-
     //! To store data about the arduino state
     ServiceData mServiceData;
 
@@ -39,21 +36,17 @@ class WOO_ARDUINO_XL320_DLLSPEC Service : public QObject
 
 public:
 
+    //! Constructors
     Service(QObject* qparent = 0);
     ~Service();
 
     //! To set the serial port name that must be used
     void setDevName(const QString& dev) { mServiceSerial.setDevName(dev); }
 
+    //! Must be called before using the service
     int start();
+    //! Must be called when the service is not longer used
     void stop();
-
-    //! Create a controller for the given servos ids
-    Controller getController(const QList<int>& ids);
-
-    //! Return true if a command is current executed
-    //!
-    // bool isCommandRunning() const { return mCmdCtrl.isRunning; }
 
     //! Function to send a command to arduino
     void sendCmd( const QString& ids = ""
@@ -61,6 +54,10 @@ public:
                 , Command::Type type = Command::Type::None
                 , const QString& value = "")
     { mServiceCommand.registerCommand(ids, name, type, value); }
+
+    //! Create a controller for the given servos ids
+    Controller getController(const QList<int>& ids);
+
 
 
     // Basic getters
@@ -72,8 +69,9 @@ public slots:
 
     //! To send test request
     void sendTest();
-    void sendPing();
 
+    //! To send a ping
+    void sendPing();
 
 signals:
 

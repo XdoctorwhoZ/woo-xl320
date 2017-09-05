@@ -1,5 +1,6 @@
 #ifndef WOO_ARDUINO_XL320_COMMAND_H
 #define WOO_ARDUINO_XL320_COMMAND_H
+#pragma once
 
 // Qt
 #include <QTimer>
