@@ -13,6 +13,7 @@ ADD_LIBRARY(
     SHARED
     Command.cxx
     ServoIds.cxx
+    ServoData.cxx
     Controller.cxx
     Service.cxx
     ServiceData.cxx

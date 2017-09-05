@@ -159,6 +159,10 @@ void XxCmdMachine::parse(const char* command)
     }
     else // case XX\r\n
     {
+
+        mController.testMultiReg();
+
+
         if (*ptr != '\r') { syntaxError("end \\r\\n"); return; }
         ptr++;
         if (*ptr != '\n') { syntaxError("end \\r\\n"); return; }

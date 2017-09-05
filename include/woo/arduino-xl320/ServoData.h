@@ -31,25 +31,29 @@ namespace woo { namespace arduino_xl320 {
 class Servo
 {
 
-public:
 
-    enum RegisterAccess
-    {
-        None, Read, Write, ReadWrite
-    };
+    //! Access right
+    enum RegisterAccess { None, ReadOnly, WriteOnly, ReadWrite };
 
+    //! Structure to represent an entry of the register map
     struct RegisterEntry
     {
         const char*     area;
         uint8_t         address;
-        uint8_t         size; // in byte
+        uint8_t         size;
         const char*     name;
-        const char*     description;
         RegisterAccess  access;
         uint32_t        initial_value;
         uint32_t        min;
         uint32_t        max;
     };
+
+    //! Map of registers of the servo
+    static RegisterEntry RegisterMap[];
+
+
+public:
+
 
     Servo();
     ~Servo();

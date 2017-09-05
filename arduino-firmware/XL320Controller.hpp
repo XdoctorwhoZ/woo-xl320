@@ -93,6 +93,80 @@ public:
     //!
     virtual ~Controller();
 
+
+    void sendReadPacket(byte id, byte addr, byte size) const
+    {
+        // addr = 2 + len = 2
+        const int params_size = 4;
+        const int bsize = Packet::ComputeBufferSize(params_size);
+
+        // buffers
+        byte buffer[bsize];
+        byte params[params_size];
+
+        // params
+        params[0] = DXL_LOBYTE(addr);
+        params[1] = DXL_HIBYTE(addr);
+        params[2] = DXL_LOBYTE(size);
+        params[3] = DXL_HIBYTE(size);
+
+        // Build packet
+        Packet pack(buffer, bsize);
+        pack.build(id, InsRead, params_size, params);
+
+    #ifdef XL320Controller_DEBUG
+        Serial.print("#SendReadPack:size=");
+        Serial.print(bsize, DEC);
+        Serial.print(", data=");
+        Serial.println(pack.toString().c_str());
+    #endif // XL320Controller_DEBUG
+
+        // Send packet
+        mXlSerial->write(buffer,bsize);
+        mXlSerial->flush();
+        
+    }
+
+    // Methode pour lire tous les registres d'un coup
+    void testMultiReg()
+    {
+        sendReadPacket(1, 0, 53);
+
+        // Read data from serial
+        unsigned long timeout =
+        (unsigned long)mNumberOfSelectedServo * (unsigned long)RxBaseTimeout;
+        receiveData(timeout);
+
+        // Parse each packet
+        Packet pack;
+        int sts;
+        int number = mNumberOfSelectedServo;
+        while( (sts=getNextPacket(pack)) != RxBufferEmpty )
+        {
+            if(sts != 0) continue;
+
+            // Check that it is a status packet
+            if(pack.getInstruction() == InsStatus)
+            {
+                int i;
+                int value = 0;
+
+                const int pcount = pack.getParameterCount();
+
+                Serial.print("COUNT=");
+                Serial.println( pcount, DEC );
+
+                for(i=0 ; i<pcount ; i++)
+                {
+                    Serial.println( pack.getParameter(i) , DEC );
+                }
+
+            }
+        }
+
+    }
+
+
     // === xl serial config ===
 
     //! Initialize the controller with the cmd stream and the xl serial
