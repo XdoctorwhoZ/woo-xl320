@@ -1,27 +1,31 @@
 // woo
-#include <woo/arduino-xl320/ServiceSerial.h>
+#include <woo/xl320/SerialComDevice.h>
 
 // Qt
 #include <QDebug>
 
 // ---
-using namespace woo::arduino_xl320;
-
-
+using namespace woo::xl320;
 
 /* ============================================================================
  *
  * */
-ServiceSerial::ServiceSerial()
+SerialComDevice::SerialComDevice(const QString& dev, qint32 baud)
     : mPort(0)
 {
-
+    // Set default configuration
+    mPortname = dev;
+    mBaudrate = baud;
+    mDatabits = QSerialPort::DataBits::Data8;
+    mStopbits = QSerialPort::StopBits::OneStop;
+    mParity   = QSerialPort::Parity::NoParity;
+    mFlowctrl = QSerialPort::FlowControl::NoFlowControl;
 }
 
 /* ============================================================================
  *
  * */
-ServiceSerial::~ServiceSerial()
+SerialComDevice::~SerialComDevice()
 {
     stop();
 }
@@ -29,20 +33,12 @@ ServiceSerial::~ServiceSerial()
 /* ============================================================================
  *
  * */
-int ServiceSerial::start()
+int SerialComDevice::start()
 {
-    // Set default configuration
-    mPortname = mDevName;
-    mBaudrate = 115200;
-    mDatabits = QSerialPort::DataBits::Data8;
-    mStopbits = QSerialPort::StopBits::OneStop;
-    mParity   = QSerialPort::Parity::NoParity;
-    mFlowctrl = QSerialPort::FlowControl::NoFlowControl;
-
     // Create serial port
-    if(mPort == 0) {
+    if (mPort == 0) {
         mPort = new QSerialPort(this);
-        connect(mPort, &QSerialPort::readyRead, this, &ServiceSerial::readData);
+        connect(mPort, &QSerialPort::readyRead, this, &SerialComDevice::readData);
     }
 
     // Set serial configuration
@@ -55,6 +51,7 @@ int ServiceSerial::start()
 
     // Open port and check success
     if (!mPort->open(QIODevice::ReadWrite)) {
+        qWarning() << "Unable to open port";
         return 1;
     }
 
@@ -65,7 +62,7 @@ int ServiceSerial::start()
 /* ============================================================================
  *
  * */
-void ServiceSerial::stop()
+void SerialComDevice::stop()
 {
     // Close serial port
     if(mPort == 0)
@@ -79,27 +76,7 @@ void ServiceSerial::stop()
 /* ============================================================================
  *
  * */
-void ServiceSerial::sendData(const QByteArray& data)
+void SerialComDevice::readData()
 {
-    mPort->write(data);
-}
-
-/* ============================================================================
- *
- * */
-void ServiceSerial::readData()
-{
-    int size;
-    char rBuffer[512];
-    while( mPort->canReadLine() )
-    {
-        // Read the line
-        size = mPort->readLine(rBuffer, sizeof(rBuffer));
-
-        // Create an array to parse this line
-        QByteArray line(rBuffer, size);
-
-        // Output data
-        emit dataLineReceived(line);
-    }
+    emit dataReceived(mPort->readAll());
 }

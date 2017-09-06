@@ -1,5 +1,5 @@
-#ifndef WOO_ARDUINO_XL320_SERVODATA_H
-#define WOO_ARDUINO_XL320_SERVODATA_H
+#ifndef WOO_XL320_SERVO_H
+#define WOO_XL320_SERVO_H
 #pragma once
 
 // Qt
@@ -7,17 +7,12 @@
 #include <QVector>
 
 // Woo
-#include "Command.h"
-#include "ServoIds.h"
-
 
 // ---
-namespace woo { namespace arduino_xl320 {
+namespace woo { namespace xl320 {
 
 // Rename in just servo
 // data -> registers
-
-
 
 //!
 //!
@@ -140,36 +135,12 @@ public:
 // push()
 
 
-/*
-command : pull / push / ping / test
 
-*/
 
 };
 
 
-
-//!
-//!
-class ServoData
-{
-
-    //! Table of data about the servo
-    uint32_t mData[Command::Name::Total];
-
-public:
-
-    //! Constructor
-    ServoData() { }
-
-    //! To get/set a data value
-    uint32_t get(Command::Name name) { return mData[(int)name]; }
-    void set(Command::Name name, uint32_t value) { mData[(int)name] = value; }
-
-};
-
-
-} // arduino_xl320
+} // xl320
 } // woo
 
-#endif // WOO_ARDUINO_XL320_SERVODATA_H
+#endif // WOO_XL320_SERVO_H

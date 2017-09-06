@@ -7,7 +7,9 @@
 #include <QObject>
 
 // woo
-#include <woo/arduino-xl320/Service.h>
+#include <woo/xl320/Servo.h>
+#include <woo/xl320/Service.h>
+#include <woo/xl320/SerialComDevice.h>
 
 //!
 //!
@@ -18,44 +20,59 @@ class Test01 : public QObject
     //! Current state of the state machine 
     int mState;
 
-    //! Service to control arduino
-    woo::arduino_xl320::Service mService;
+    //!
+    woo::xl320::Service mService;
+
+    //! 
+    woo::xl320::SerialComDevice mSerialComDevice;
 
 public:
     
-    Test01() { }
-
-    //!
-    //!
-    int start(const char* dev)
+    Test01()
     {
-        // Create xl320 comminucation service
-        mService.setDevName(QString(dev));
 
-        // Start this service
-        if ( mService.start() ) {
-            qDebug() << "====Fail to start xl320 service";
-            return 1;
+    }
+
+    //!
+    int start(const char* dev, qint32 baud = 115200)
+    {
+        int status;
+
+        // Start serial device
+        mSerialComDevice.setDevice(dev);
+        mSerialComDevice.setBaudRate(baud);
+        status = mSerialComDevice.start();
+        if (status) {
+            return status;
         }
 
-        // Reset state machine
-        mState = 0;
-        nextWork();
+        // Connect serial device with service
+        connect(&mSerialComDevice, &woo::xl320::SerialComDevice::dataReceived   ,
+                &mService        , &woo::xl320::Service::parseData              );
+        connect(&mService        , &woo::xl320::Service::dataTxRequested    ,
+                &mSerialComDevice, &woo::xl320::SerialComDevice::sendData   );
 
-        // Get first id from PING
 
-        // Get a controller for the first id
 
-        // Request update for each of its data
 
-        // when it is over
+    //     // Reset state machine
+    //     mState = 0;
+    //     nextWork();
 
-        // Send test
-        // QTimer::singleShot(2000, &xservice, &woo::arduino_xl320::Service::sendPing);
-        // QTimer::singleShot(2000, &xservice, &woo::arduino_xl320::Service::sendTest);
-        // QTimer::singleShot(2000, &xservice, &woo::arduino_xl320::Service::sendTest);
-        // QTimer::singleShot(2000, &xservice, &woo::arduino_xl320::Service::sendTest);
-        // QTimer::singleShot(2000, &xservice, &woo::arduino_xl320::Service::sendTest);
+    //     // Get first id from PING
+
+    //     // Get a controller for the first id
+
+    //     // Request update for each of its data
+
+    //     // when it is over
+
+    //     // Send test
+    //     // QTimer::singleShot(2000, &xservice, &woo::arduino_xl320::Service::sendPing);
+    //     // QTimer::singleShot(2000, &xservice, &woo::arduino_xl320::Service::sendTest);
+    //     // QTimer::singleShot(2000, &xservice, &woo::arduino_xl320::Service::sendTest);
+    //     // QTimer::singleShot(2000, &xservice, &woo::arduino_xl320::Service::sendTest);
+    //     // QTimer::singleShot(2000, &xservice, &woo::arduino_xl320::Service::sendTest);
 
 
         return 0;
@@ -63,17 +80,17 @@ public:
 
     //!
     //!
-    void nextWork()
-    {
-        switch(mState)
-        {
-            case 0:
-            {
-                qDebug() << "====Send test in 2 sec";
-                QTimer::singleShot(2000, &mService, SLOT(sendTest()));
-            }
-        }
-    }
+    // void nextWork()
+    // {
+    //     switch(mState)
+    //     {
+    //         case 0:
+    //         {
+    //             qDebug() << "====Send test in 2 sec";
+    //             QTimer::singleShot(2000, &mService, SLOT(sendTest()));
+    //         }
+    //     }
+    // }
 
 
 };

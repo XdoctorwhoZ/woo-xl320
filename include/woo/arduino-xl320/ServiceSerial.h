@@ -31,7 +31,7 @@ class ServiceSerial : public QObject
     QSerialPort::DataBits       mDatabits;
     QSerialPort::StopBits       mStopbits;
     QSerialPort::Parity         mParity;
-    QSerialPort::FlowControl    mFlowctrl;   
+    QSerialPort::FlowControl    mFlowctrl;
 
 public:
  

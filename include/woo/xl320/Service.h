@@ -4,17 +4,13 @@
 // Qt
 #include <QTimer>
 #include <QQueue>
-#include <QtSerialPort/QSerialPort>
 
 // woo
 #include "DllSpec.h"
-#include "ComDevice.h"
+#include "Command.h"
 
 // ---
-namespace woo { namespace arduino_xl320 {
-
-// ---
-class Controller;
+namespace woo { namespace xl320 {
 
 //! Main class of arduino xl320
 //! Control reception and transmission of data
@@ -23,28 +19,15 @@ class Service : public QObject
 {
     Q_OBJECT
 
-    // //! To store data about the arduino state
-    // ServiceData mServiceData;
-
-    // //! To control serial port
-    // ServiceSerial mServiceSerial;
-
-    // //! To control command transmission and reception + parsing
-    // ServiceCommand mServiceCommand;
-
 public:
 
-    //! Constructors
+    //! Constructor
     Service(QObject* qparent = 0);
+
+    //! Destructor
     ~Service();
 
-    // //! To set the serial port name that must be used
-    // void setDevName(const QString& dev) { mServiceSerial.setDevName(dev); }
 
-    // //! Must be called before using the service
-    // int start();
-    // //! Must be called when the service is not longer used
-    // void stop();
 
     // //! Function to send a command to arduino
     // void sendCmd( const QString& ids = ""
@@ -65,6 +48,10 @@ public:
 
 public slots:
 
+    //! Parse data from device com
+    void parseData(const QByteArray& data);
+
+
     // //! To send test request
     // void sendTest();
 
@@ -72,6 +59,10 @@ public slots:
     // void sendPing();
 
 signals:
+
+    
+    //!
+    void dataTxRequested(const QByteArray& data);
 
     // //! Emitted when the running command has received an answers or timeout
     // //!
@@ -83,7 +74,7 @@ signals:
 
 };
 
-} // arduino_xl320
+} // xl320
 } // woo
 
 #endif // WOO_XL320_SERVICE_H
