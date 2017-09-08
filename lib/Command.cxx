@@ -1,121 +1,51 @@
 // woo
-#include <woo/arduino-xl320/Command.h>
-
-// std
-#include <stdexcept>
+#include <woo/xl320/Command.h>
 
 // ---
-using namespace woo::arduino_xl320;
+using namespace woo::xl320;
 
 /* ============================================================================
  *
  * */
-const Command::NameInfo Command::NameInfos[Command::Name::Total] = {
-    { false, "XBAUD"             } , // XBaud
-    { false, "PING"              } , // Ping
-    { false, "SEL"               } , // Select
-
-    { true , "MODEL"             } , // ModelNumber
-    { true , "VERSION"           } , // Version
-    { false, "ID"                } , // Id
-    { false, "BAUD"              } , // Baud
-    { false, "RDT"               } , // ReturnDelayTime
-    { false, "ANG_LIM_MIN"       } , // CwAngleLimit
-    { false, "ANG_LIM_MAX"       } , // CcwAngleLimit
-    { false, "CTRL_MODE"         } , // ControlMode
-    { false, "TEMP_LIM"          } , // LimitTemperature
-    { false, "VOLT_LIMIT_D"      } , // DownLimitVoltage
-    { false, "VOLT_LIMIT_U"      } , // UpLimitVoltage
-    { false, "MAX_TORQUE"        } , // MaxTorque
-    { false, "RET_LEVEL"         } , // ReturnLevel
-    { true , "ALARM"             } , // AlarmShutdown
-
-    { false, "TORQUE_ENABLE"     } , // TorqueEnable
-    { false, "LED"               } , // Led
-    { false, "DGAIN"             } , // Dgain
-    { false, "IGAIN"             } , // Igain
-    { false, "PGAIN"             } , // Pgain
-    { false, "GPOS"              } , // GoalPosition
-    { false, "GSPEED"            } , // GoalSpeed
-    { false, "GTORQUE"           } , // GoalTorque
-    { true , "PPOS"              } , // PresentPosition
-    { true , "PSPEED"            } , // PresentSpeed
-    { true , "PLOAD"             } , // PresentLoad
-    { true , "PVOLT"             } , // PresentVoltage
-    { true , "PTEMP"             } , // PresentTemperature
-    { true , "REG_INSTRU"        } , // RegisteredInstruction
-    { true , "MOVING"            } , // Moving
-    { true , "HARDWARE_ERROR"    } , // HardwareError
-    { true , "PUNCH"             } , // Punch
-
-    { true , ""                  } , // Test
-};
+Command::Command(Type type, uint8_t id, uint8_t addr, uint8_t size, const QByteArray& data)
+    : mType(type)
+    , mId(id)
+    , mAddr(addr)
+    , mSize(size)
+    , mData(data)
+{ }
 
 /* ============================================================================
  *
  * */
-Command::Name Command::NameStr2Id(const QByteArray& str)
+QByteArray Command::toDataArray()
 {
-    for(int i=0 ; i<Command::Name::Total ; i++)
+    QByteArray buffer;
+    Packet pack(buffer);
+
+    switch(mType)
     {
-        const auto& info = Command::NameInfos[i];
-        if( str == QByteArray(info.name) ) {
-            return (Name)i;
-        }
-    }
-    return Name::Total;
-}
-
-/* ============================================================================
- *
- * */
-bool Command::needIdSelection() const
-{
-    QList<Name> noIdRequired = QList<Name>()
-        << Name::Test
-        << Name::XBaud
-        << Name::Ping  
-        << Name::Select;
-    if( noIdRequired.indexOf(mName) == -1 ) { return true; }
-    return false;
-}
-
-/* ============================================================================
- *
- * */
-QByteArray Command::toData() const
-{
-    QByteArray cmd = "XX";
-    if ( mName != Name::Test )
-    {
-        cmd += '+';
-        cmd += NameInfos[mName].name;
-        switch(mType)
+        case Type::ping:
         {
-            case Type::Getter:
-            {
-                cmd += "?";
-                break;
-            }
-            case Type::Setter:
-            {
-                if( NameInfos[mName].ronly )
-                {
-                    throw std::invalid_argument("Read-Only Command");
-                }
-                else
-                {
-                    cmd += "=" + mValue;
-                }
-                break;
-            }
-            default:
-            {
-                throw std::invalid_argument("Wrong Command Type");
-                break;
-            }
+            pack.build(Packet::Constant::BroadcastId, Packet::Instruction::InsPing, 0);
+            break;
+        }
+        case Type::pull:
+        {
+            QByteArray params;
+            params += Packet::WordLoByte(mAddr);
+            params += Packet::WordHiByte(mAddr);
+            params += Packet::WordLoByte(mSize);
+            params += Packet::WordHiByte(mSize);
+            pack.build(mId, Packet::Instruction::InsRead, params);
+            break;
+        }
+        case Type::push:
+        {
+
+            break;
         }
     }
-    cmd += "\r\n";
-    return cmd;
+
+    return buffer;
 }

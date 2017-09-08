@@ -5,16 +5,19 @@
 // Qt
 #include <QDebug>
 #include <QVector>
+#include <QByteArray>
 
 // Woo
+#include "DllSpec.h"
+#include "Command.h"
 
 // ---
 namespace woo { namespace xl320 {
 
-// Rename in just servo
-// data -> registers
+// ---
+class Service;
 
-//!
+//! Class to manage servo data
 //!
 class Servo
 {
@@ -91,34 +94,27 @@ class Servo
     // service*
 
     // Id
-    // int mId,
+    uint8_t mId;
 
     //! Image that represents register values inside the servo
-    QVector<uint8_t> mRegisterDistantData;
+    QByteArray mRegisterDistantData;
 
     //! Image that represents non sync user modifications
-    QVector<uint8_t> mRegisterWorkingData;
+    QByteArray mRegisterWorkingData;
 
 public:
 
-    Servo()
-    {
-        CheckRegisterMapIntegrity();
+    //! Constructor
+    Servo(uint8_t id = 1);
 
-        const int map_size = RegisterMapSize();
-        mRegisterDistantData.resize(map_size);
-        mRegisterWorkingData.resize(map_size);
+    // basic setters
+    void setId(uint8_t id) { mId = id; }
 
-        qDebug() << map_size;
-    }
+    //! To extract a value from working registers
+    uint16_t get(RegisterIndex index);
 
-    ~Servo()
-    {
-
-    }
-
-    uint32_t get(RegisterIndex index);
-    void set(RegisterIndex index, uint32_t value);
+    //! To set a value in working registers
+    void set(RegisterIndex index, uint16_t value);
 
 
 // Servo

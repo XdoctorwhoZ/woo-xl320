@@ -1,11 +1,15 @@
 // woo
-#include <woo/arduino-xl320/ServoData.h>
+#include <woo/xl320/Servo.h>
+#include <woo/xl320/Service.h>
 
 // Qt
 #include <QDebug>
 
+// std
+#include <stdexcept>
+
 // ---
-using namespace woo::arduino_xl320;
+using namespace woo::xl320;
 
 /* ============================================================================
  *
@@ -90,16 +94,56 @@ int Servo::RegisterMapSize()
 /* ============================================================================
  *
  * */
-uint32_t Servo::get(RegisterIndex index)
+Servo::Servo(uint8_t id)
+    : mId(id)
 {
-
+    // if ( ! CheckRegisterMapIntegrity() ) {
+    //     throw std::logic_error("woo::xl320::Servo -> map registers is not valid");
+    // }
+    const int map_size = RegisterMapSize();
+    mRegisterDistantData.resize(map_size);
+    mRegisterWorkingData.resize(map_size);
 }
 
 /* ============================================================================
  *
  * */
-void Servo::set(RegisterIndex index, uint32_t value)
+uint16_t Servo::get(RegisterIndex index)
 {
-
+    const RegisterEntry& entry = RegisterMap[index];
+    switch(entry.size)
+    {
+        case 1:
+        {
+            return mRegisterWorkingData[entry.address];
+        }
+        case 2:
+        {
+            const uint8_t lo = mRegisterWorkingData[entry.address];
+            const uint8_t hi = mRegisterWorkingData[entry.address + 1];
+            return Packet::MakeWord(lo,hi);
+        }
+    }
 }
 
+/* ============================================================================
+ *
+ * */
+void Servo::set(RegisterIndex index, uint16_t value)
+{
+    const RegisterEntry& entry = RegisterMap[index];
+    switch(entry.size)
+    {
+        case 1:
+        {
+            mRegisterWorkingData[entry.address] = Packet::WordLoByte(value);
+            break;
+        }
+        case 2:
+        {
+            mRegisterWorkingData[entry.address]     = Packet::WordLoByte(value);
+            mRegisterWorkingData[entry.address + 1] = Packet::WordHiByte(value);
+            break;
+        }
+    }
+}

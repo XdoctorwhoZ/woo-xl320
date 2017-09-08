@@ -14,23 +14,20 @@ using namespace std;
 //!
 int main(int argc, char *argv[])
 {
-    // // Check if device is provided
-    // if( argc < 2 ) {
-    //     cerr << "usage: test-01 /dev/tty" << endl;
-    //     return 1;
-    // }
+    // Check if device is provided
+    if( argc < 2 ) {
+        cerr << "usage: test-01 /dev/tty" << endl;
+        return 1;
+    }
 
     // Start qt core application
     QCoreApplication a(argc, argv);
 
-
-    // woo::arduino_xl320::Servo s;
-
-    // // Start test
-    // Test01 testObj;
-    // if( testObj.start(argv[1]) ) {
-    //     return 1;   
-    // }
+    // Start test
+    Test01 testObj;
+    if( testObj.start(argv[1]) ) {
+        return 1;   
+    }
 
     return a.exec();
 }

@@ -9,7 +9,8 @@
 // ---
 namespace woo { namespace xl320 {
 
-//! 
+//! Packet manager
+//!
 class Packet
 {
 
@@ -18,12 +19,19 @@ public:
     //! Constant value definitions
     struct Constant
     {
-        static constexpr uint8_t Header0 = 0xFF;
-        static constexpr uint8_t Header1 = 0xFF;
-        static constexpr uint8_t Header2 = 0xFD;
-        static constexpr uint8_t Reserve = 0x00;
+        static constexpr uint8_t Header0        = 0xFF;
+        static constexpr uint8_t Header1        = 0xFF;
+        static constexpr uint8_t Header2        = 0xFD;
+        static constexpr uint8_t Reserve        = 0x00;
+        static constexpr uint8_t BroadcastId    = 0xFE;
+    };
 
-        static constexpr uint8_t BroadcastId = 0xFE;
+    //! Return value for the function that validate packet structure
+    enum PacketState
+    {
+        PsValid       = 0x1 ,
+        PsBadHeader   = 0x2 ,
+        PsBadCrc      = 0x3 ,
     };
 
     //! Available instructions
@@ -36,13 +44,27 @@ public:
         InsAction          = 0x05 , // Instruction that executes the Packet that was registered beforehand using Reg Write
         InsFactoryReset    = 0x06 , // Instruction that resets the Control Table to its initial factory default settings
         InsReboot          = 0x08 , // Instruction to reboot the Device
-        InsStatus          = 0x55 , // Return Instruction for the Instruction Packet
+        InsStatus          = 0x55 , // (85) Return Instruction for the Instruction Packet
         InsSyncRead        = 0x82 , // For multiple devices, Instruction to read data from the same Address with the same length at once
         InsSyncWrite       = 0x83 , // For multiple devices, Instruction to write data on the same Address with the same length at once
         InsBulkRead        = 0x92 , // For multiple devices, Instruction to read data from different Addresses with different lengths at once
         InsBulkWrite       = 0x93 , // For multiple devices, Instruction to write data on different Addresses with different lengths at once
     };
 
+    //! Function to compute the requested size of the buffer for a given number of params
+    //! + 7 header size
+    //! + 1 instruction
+    //! + 2 crc
+    //! + params size
+    static int ComputeBufferSize(int params_size) { return 7 + 1 + 2 + params_size; }
+
+    // Helper functions
+    static inline uint8_t WordLoByte(uint16_t w) { return (uint8_t) (w & 0xff); }
+    static inline uint8_t WordHiByte(uint16_t w) { return (uint8_t) ((w >> 8) & 0xff); }
+    static inline uint16_t MakeWord(uint8_t lo, uint8_t hi) { return (uint16_t)( ((uint16_t)lo) | (((uint16_t)hi)<<8) ); }
+
+    //! Function to compute crc16 for dynamixel
+    static uint16_t UpdateCRC(uint16_t crc_accum, uint8_t* data_blk_ptr, uint16_t data_blk_size);
 
 private:
 
@@ -51,32 +73,26 @@ private:
 
 public:
 
-    //! Function to compute the size of the buffer
-    //!
-    static int ComputeBufferSize(int params_size) { return 7 + 3 + params_size; }
-
     //! Prepare packet manager with the following buffer
     Packet(QByteArray& data) : mData(data) { }
 
     //! Build a packet with the following data
     void build(uint8_t id, Instruction instruction, int params_size, ...);
-    void build(uint8_t id, Instruction instruction, int params_size, uint8_t* params);
+    void build(uint8_t id, Instruction instruction, const QByteArray& params);
 
-    // // Basic getters
-    // uint8_t getId() const { return mData[4]; }
-    // int getLength() const { return (int)DXL_MAKEWORD(mData[5], mData[6]); }
-    // Instruction getInstruction() const { return (Instruction)mData[7]; }
-    // int getParameterCount() const { return getLength() - 3; }
-    // uint8_t getParameter(int n) const { return mData[8+n]; }
-    // unsigned short getCrc() const { return (unsigned short)DXL_MAKEWORD(mData[mDataSize-2], mData[mDataSize-1]); }
+    // Basic getters
+    uint8_t     getId()             const { return mData[4]; }
+    uint16_t    getLength()         const { return MakeWord(mData[5], mData[6]); }
+    Instruction getInstruction()    const { return static_cast<Instruction>((uint8_t)mData[7]); }
+    uint16_t    getParameterCount() const { return getLength() - 3; }
+    uint8_t     getParameter(int n) const { return mData[8+n]; }
+    uint16_t    getCrc()            const { return MakeWord(mData[mData.size()-2], mData[mData.size()-1]); }
 
     //! Function to check packet structure
-    //!
-    // PacketState validate() const;
+    PacketState validate() const;
 
     //! Return string representation of the packet
-    //!
-    // String toString() const;
+    QString toString() const;
 };
 
 } // xl320

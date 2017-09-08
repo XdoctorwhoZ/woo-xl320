@@ -3,6 +3,7 @@
 #pragma once
 
 // Qt
+#include <QList>
 #include <QDebug>
 #include <QObject>
 
@@ -26,12 +27,13 @@ class Test01 : public QObject
     //! 
     woo::xl320::SerialComDevice mSerialComDevice;
 
+    //! 
+    QList<woo::xl320::Servo> mServos;
+
 public:
     
     Test01()
-    {
-
-    }
+    { }
 
     //!
     int start(const char* dev, qint32 baud = 115200)
@@ -47,50 +49,46 @@ public:
         }
 
         // Connect serial device with service
-        connect(&mSerialComDevice, &woo::xl320::SerialComDevice::dataReceived   ,
-                &mService        , &woo::xl320::Service::parseData              );
-        connect(&mService        , &woo::xl320::Service::dataTxRequested    ,
-                &mSerialComDevice, &woo::xl320::SerialComDevice::sendData   );
+        connect(&mSerialComDevice, &woo::xl320::SerialComDevice::dataReceived           ,
+                &mService        , &woo::xl320::Service::receiveData                    , Qt::DirectConnection );
+        connect(&mService        , &woo::xl320::Service::commandTransmissionRequested   ,
+                &mSerialComDevice, &woo::xl320::SerialComDevice::sendData               , Qt::DirectConnection );
 
-
-
-
-    //     // Reset state machine
-    //     mState = 0;
-    //     nextWork();
-
-    //     // Get first id from PING
-
-    //     // Get a controller for the first id
-
-    //     // Request update for each of its data
-
-    //     // when it is over
-
-    //     // Send test
-    //     // QTimer::singleShot(2000, &xservice, &woo::arduino_xl320::Service::sendPing);
-    //     // QTimer::singleShot(2000, &xservice, &woo::arduino_xl320::Service::sendTest);
-    //     // QTimer::singleShot(2000, &xservice, &woo::arduino_xl320::Service::sendTest);
-    //     // QTimer::singleShot(2000, &xservice, &woo::arduino_xl320::Service::sendTest);
-    //     // QTimer::singleShot(2000, &xservice, &woo::arduino_xl320::Service::sendTest);
-
-
+        // Reset state machine
+        mState = 0;
+        QTimer::singleShot(0, this, SLOT(nextWork()));
         return 0;
     }
 
     //!
-    //!
-    // void nextWork()
-    // {
-    //     switch(mState)
-    //     {
-    //         case 0:
-    //         {
-    //             qDebug() << "====Send test in 2 sec";
-    //             QTimer::singleShot(2000, &mService, SLOT(sendTest()));
-    //         }
-    //     }
-    // }
+    void nextWork()
+    {
+        switch(mState)
+        {
+            case 0:
+            {
+                qDebug() << "# Send ping in 2 sec";
+                QTimer::singleShot(2000, &mService, SLOT(sendPing()));
+                mState++;
+            }
+            case 1:
+            {
+                QList<uint8_t> ids = mService.getPingResult();
+                qDebug() << "# Found " << ids.size() << "ids";
+                
+                mServos.resize(ids.size());
+                for(int i=0 ; i<ids.size() ; i++)
+                {
+                    mServos[i].setId(ids[i]);
+                    // mService
+                }
+
+                mState++;
+            }
+        }
+        // Restart state machine
+        QTimer::singleShot(0, this, SLOT(nextWork()));
+    }
 
 
 };
