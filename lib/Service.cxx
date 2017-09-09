@@ -42,6 +42,13 @@ void Service::registerCommand(const Command& cmd)
  * */
 Servo* Service::getServo(uint8_t id)
 {
+    for(auto& s : mServos)
+    {
+        if(s->getId() == id)
+        {
+            return s.data();
+        }
+    }
     QSharedPointer<Servo> servoPtr(new Servo(id, this));
     mServos << servoPtr;
     return servoPtr.data();
@@ -173,22 +180,10 @@ void Service::processPacket(const Packet& pack)
 
     switch(mCurrentCommand.getType())
     {
-        case Command::Type::none:
-        {
-
-            break;
-        }
+        case Command::Type::none: break;
         case Command::Type::ping: processPacket_Ping(pack); break;
-        case Command::Type::pull:
-        {
-
-            break;
-        }
-        case Command::Type::push:
-        {
-
-            break;
-        }
+        case Command::Type::pull: processPacket_Pull(pack); break;
+        case Command::Type::push: processPacket_Push(pack); break;
     }
 }
 
@@ -225,6 +220,44 @@ void Service::processPacket_Ping(const Packet& pack)
             break;
         }
     }
+}
+
+/* ============================================================================
+ *
+ * */
+void Service::processPacket_Pull(const Packet& pack)
+{
+    switch(pack.getInstruction())
+    {
+        case Packet::Instruction::InsRead:
+        {
+            #ifdef DEBUG_PLUS
+            qDebug() << "      - Read echo";
+            #endif
+            break;
+        }
+        case Packet::Instruction::InsStatus:
+        {
+            uint8_t id = pack.getId();
+            Servo* servo = getServo(id);
+            servo->update((Servo::RegisterIndex)mCurrentCommand.getAddr(), pack.getReadData());
+            endCommand();
+            break;
+        }
+        default:
+        {
+            qWarning("      - Unexpected message received in ping context %s", pack.toString().toStdString().c_str());
+            break;
+        }
+    }
+}
+
+/* ============================================================================
+ *
+ * */
+void Service::processPacket_Push(const Packet& pack)
+{
+
 }
 
 /* ============================================================================

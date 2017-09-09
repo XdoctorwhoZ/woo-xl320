@@ -101,9 +101,6 @@ public:
     // Id
     uint8_t mId;
 
-    //! Image that represents register values inside the servo
-    QByteArray mRegisterDistantData;
-
     //! Image that represents non sync user modifications
     QByteArray mRegisterWorkingData;
 
@@ -112,22 +109,34 @@ public:
 
 public:
 
+    // Basic getters
+    uint8_t getId() { return mId; }
+
     //! To extract a value from working registers
-    uint16_t get(RegisterIndex index);
+    uint16_t get(RegisterIndex index) const;
 
     //! To set a value in working registers
     void set(RegisterIndex index, uint16_t value);
 
     //! Get remote value from servo
-    void pull(RegisterIndex index);
+    void pull(RegisterIndex index) { pull(index, index); }
+    void pull(RegisterIndex beg_index, RegisterIndex end_index);
+    void pullAll() { pull(ModelNumber, Punch); }
 
+    //! Get all values dumped in text
+    QString toString() const;
 
-// Servo
-// Service      // data
-// ComDevice
-// SerialComDevice : public ComDevice // binary
+private:
 
-// packet   // packet
+    //! To extract a value from working registers
+    uint16_t get(RegisterIndex index, const QByteArray& regTable) const;
+
+    //! To set a value in working registers
+    void set(RegisterIndex index, uint16_t value, QByteArray& regTable);
+    void set(RegisterIndex index, const QByteArray& value, QByteArray& regTable);
+
+    //! Update locals and remotes values
+    void update(RegisterIndex index, const QByteArray& value);
 
 // pull(RegisterIndex beg, RegisterIndex end)
 // pullAll()

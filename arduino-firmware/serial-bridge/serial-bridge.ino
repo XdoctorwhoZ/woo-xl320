@@ -47,7 +47,5 @@ void loop()
         // Send it directly to PC
         PC_SERIAL.write(ReadBuffer, readSize);
     }
-
-    // test with 1s delay
-    delay(500);
+ 
 }

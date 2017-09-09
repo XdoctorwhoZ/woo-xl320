@@ -85,8 +85,9 @@ public:
     uint16_t    getLength()         const { return MakeWord(mData[5], mData[6]); }
     Instruction getInstruction()    const { return static_cast<Instruction>((uint8_t)mData[7]); }
     uint16_t    getParameterCount() const { return getLength() - 3; }
-    uint8_t     getParameter(int n) const { return mData[8+n]; }
+    uint8_t     getParameter(int n) const { return mData[8+n]; }    
     uint16_t    getCrc()            const { return MakeWord(mData[mData.size()-2], mData[mData.size()-1]); }
+    QByteArray  getReadData()       const { return mData.mid(9, getParameterCount()-1); }
 
     //! Function to check packet structure
     PacketState validate() const;

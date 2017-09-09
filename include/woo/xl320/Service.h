@@ -20,7 +20,7 @@ class Service : public QObject
     Q_OBJECT
 
     //! Timeout values defintion in ms
-    static constexpr int PingTimeout = 10000;
+    static constexpr int PingTimeout = 5000;
     static constexpr int DefaultTimeout = 5000;
 
     //! Running command indicator
@@ -71,6 +71,8 @@ private:
     //! Use packet information to update service
     void processPacket(const Packet& pack);
     void processPacket_Ping(const Packet& pack);
+    void processPacket_Pull(const Packet& pack);
+    void processPacket_Push(const Packet& pack);
 
     //! End the command process
     void endCommand();

@@ -99,8 +99,13 @@ public slots:
             }
             case 2:
             {
-                qDebug() << "# ModelNumber of servo " << mServos[0]->get(Servo::RegisterIndex::ModelNumber);
-
+                qDebug() << "# ModelNumber of servo" << mServos[0]->get(Servo::RegisterIndex::ModelNumber);
+                mServos[0]->pullAll();
+                break;
+            }
+            case 3:
+            {
+                qDebug() << "#" << mServos[0]->toString();
                 break;
             }
         }
@@ -116,10 +121,8 @@ public slots:
     void onCommandFinish()
     {
         qDebug() << "# Command finish";
-        
         mState++;
         QTimer::singleShot(0, this, SLOT(nextWork()));
-
     }
 
 };

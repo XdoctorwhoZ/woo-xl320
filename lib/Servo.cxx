@@ -102,30 +102,84 @@ Servo::Servo(uint8_t id, Service* service)
     //     throw std::logic_error("woo::xl320::Servo -> map registers is not valid");
     // }
     const int map_size = RegisterMapSize();
-    mRegisterDistantData.resize(map_size);
     mRegisterWorkingData.resize(map_size);
-
-    //
-    mRegisterDistantData.fill(0);
     mRegisterWorkingData.fill(0);
 }
 
 /* ============================================================================
  *
  * */
-uint16_t Servo::get(RegisterIndex index)
+uint16_t Servo::get(RegisterIndex index) const
+{
+    return get(index, mRegisterWorkingData);
+}
+
+/* ============================================================================
+ *
+ * */
+void Servo::set(RegisterIndex index, uint16_t value)
+{
+    set(index, value, mRegisterWorkingData);
+}
+
+/* ============================================================================
+ *
+ * */
+void Servo::pull(RegisterIndex beg_index, RegisterIndex end_index)
+{
+    if (!mService) {
+        return;
+    }
+
+    const RegisterEntry& beg_entry = RegisterMap[beg_index];
+    const RegisterEntry& end_entry = RegisterMap[end_index];
+    mService->registerCommand(
+        Command ( Command::Type::pull
+                , mId
+                , beg_entry.address
+                , (end_entry.address - beg_entry.address) + end_entry.size
+           )
+        );
+}
+
+/* ============================================================================
+ *
+ * */
+QString Servo::toString() const
+{
+    QString str;
+
+    int i = 0;
+    while (strcmp(RegisterMap[i].area, "END") != 0)
+    {
+        const RegisterEntry& r = RegisterMap[i];
+
+        str += QString("%1(%2), ")
+            .arg(r.name)
+            .arg(get((RegisterIndex)r.address));
+
+        i++;
+    }
+
+    return str;
+}
+
+/* ============================================================================
+ *
+ * */
+uint16_t Servo::get(RegisterIndex index, const QByteArray& regTable) const
 {
     const RegisterEntry& entry = RegisterMap[index];
     switch(entry.size)
     {
         case 1:
         {
-            return mRegisterWorkingData[entry.address];
+            return regTable[entry.address];
         }
         case 2:
         {
-            const uint8_t lo = mRegisterWorkingData[entry.address];
-            const uint8_t hi = mRegisterWorkingData[entry.address + 1];
+            const uint8_t lo = regTable[entry.address];
+            const uint8_t hi = regTable[entry.address + 1];
             return Packet::MakeWord(lo,hi);
         }
     }
@@ -134,20 +188,20 @@ uint16_t Servo::get(RegisterIndex index)
 /* ============================================================================
  *
  * */
-void Servo::set(RegisterIndex index, uint16_t value)
+void Servo::set(RegisterIndex index, uint16_t value, QByteArray& regTable)
 {
     const RegisterEntry& entry = RegisterMap[index];
     switch(entry.size)
     {
         case 1:
         {
-            mRegisterWorkingData[entry.address] = Packet::WordLoByte(value);
+            regTable[entry.address] = Packet::WordLoByte(value);
             break;
         }
         case 2:
         {
-            mRegisterWorkingData[entry.address]     = Packet::WordLoByte(value);
-            mRegisterWorkingData[entry.address + 1] = Packet::WordHiByte(value);
+            regTable[entry.address]     = Packet::WordLoByte(value);
+            regTable[entry.address + 1] = Packet::WordHiByte(value);
             break;
         }
     }
@@ -156,18 +210,19 @@ void Servo::set(RegisterIndex index, uint16_t value)
 /* ============================================================================
  *
  * */
-void Servo::pull(RegisterIndex index)
+void Servo::set(RegisterIndex index, const QByteArray& values, QByteArray& regTable)
 {
-    if (!mService) {
-        return;
-    }
-
     const RegisterEntry& entry = RegisterMap[index];
-    mService->registerCommand(
-        Command ( Command::Type::pull
-                , mId
-                , entry.address
-                , entry.size
-           )
-        );
+    for(int i=0 ; i<values.size() ; i++)
+    {
+        regTable[entry.address + i] = values[i];
+    }
+}
+
+/* ============================================================================
+ *
+ * */
+void Servo::update(RegisterIndex index, const QByteArray& values)
+{
+    set(index, values, mRegisterWorkingData);
 }
