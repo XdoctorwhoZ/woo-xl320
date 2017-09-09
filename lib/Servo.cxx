@@ -94,8 +94,9 @@ int Servo::RegisterMapSize()
 /* ============================================================================
  *
  * */
-Servo::Servo(uint8_t id)
-    : mId(id)
+Servo::Servo(uint8_t id, Service* service)
+    : mService(service)
+    , mId(id)
 {
     // if ( ! CheckRegisterMapIntegrity() ) {
     //     throw std::logic_error("woo::xl320::Servo -> map registers is not valid");
@@ -103,6 +104,10 @@ Servo::Servo(uint8_t id)
     const int map_size = RegisterMapSize();
     mRegisterDistantData.resize(map_size);
     mRegisterWorkingData.resize(map_size);
+
+    //
+    mRegisterDistantData.fill(0);
+    mRegisterWorkingData.fill(0);
 }
 
 /* ============================================================================
@@ -146,4 +151,23 @@ void Servo::set(RegisterIndex index, uint16_t value)
             break;
         }
     }
+}
+
+/* ============================================================================
+ *
+ * */
+void Servo::pull(RegisterIndex index)
+{
+    if (!mService) {
+        return;
+    }
+
+    const RegisterEntry& entry = RegisterMap[index];
+    mService->registerCommand(
+        Command ( Command::Type::pull
+                , mId
+                , entry.address
+                , entry.size
+           )
+        );
 }

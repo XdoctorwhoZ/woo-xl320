@@ -4,6 +4,7 @@
 // Qt
 #include <QTimer>
 #include <QQueue>
+#include <QSharedPointer>
 
 // woo
 #include "Servo.h"
@@ -18,10 +19,17 @@ class Service : public QObject
 {
     Q_OBJECT
 
+    //! Timeout values defintion in ms
+    static constexpr int PingTimeout = 10000;
+    static constexpr int DefaultTimeout = 5000;
+
     //! Running command indicator
     //! pass true when command is sent
     //! pass false when command result has been received
     bool mIsRunning;
+
+    //! Timer to control command timeout
+    QTimer mTimerOut;
 
     //! Commands that must be send
     QQueue<Command> mCommandQueue;
@@ -34,6 +42,9 @@ class Service : public QObject
 
     //! List of ids reached by ping
     QList<uint8_t> mPingResult;
+
+    //! All servos connected to this service
+    QList<QSharedPointer<Servo>> mServos;
 
 public:
 
@@ -49,6 +60,9 @@ public:
     //! Return the list of id from ping
     QList<uint8_t> getPingResult() const { return mPingResult; }
 
+    //! Get servo controller for servo id
+    Servo* getServo(uint8_t id);
+
 private:
 
     //! Parse packet contained in rx buffer
@@ -58,11 +72,17 @@ private:
     void processPacket(const Packet& pack);
     void processPacket_Ping(const Packet& pack);
 
+    //! End the command process
+    void endCommand();
+
 private slots:
 
     //! Take the next command in the tx queue and send it
     //! If a command is already running, a timer will call back this function later
     void sendNextCommand();
+
+    //! To manage command timeout
+    void manageCommandTimeout();
 
 public slots:
 
@@ -77,13 +97,11 @@ signals:
     //! To send data through com device
     void commandTransmissionRequested(const QByteArray& data);
 
-    // //! Emitted when the running command has received an answers or timeout
-    // //!
-    // void commandFinish();
+    //! Emitted during a ping command when an answer is received
+    void newPingIdReceived(uint8_t id);
 
-    // //! Emitted when the result of the test is ready to be read
-    // //!
-    // void testResultReady(bool result);
+    //! Emitted when the running command has received an answers or timeout
+    void commandEnded();
 
 };
 

@@ -17,7 +17,7 @@ Service::Service(QObject* qparent)
     : QObject(qparent)
     , mIsRunning(false)
 {
-
+    connect(&mTimerOut, &QTimer::timeout, this, &Service::manageCommandTimeout);
 }
 
 /* ============================================================================
@@ -40,13 +40,23 @@ void Service::registerCommand(const Command& cmd)
 /* ============================================================================
  *
  * */
+Servo* Service::getServo(uint8_t id)
+{
+    QSharedPointer<Servo> servoPtr(new Servo(id, this));
+    mServos << servoPtr;
+    return servoPtr.data();
+}
+
+/* ============================================================================
+ *
+ * */
 void Service::parsePacket()
 {
     #ifdef DEBUG_PLUS
-    qDebug() << "  + Service::parsePacket()";
+    qDebug() << "  + Service::parsePacket(" << mRxBuffer << ")(" << mRxBuffer.size() << ")";
     #endif
 
-    // Check if the buffre is not empty
+    // Check if the buffer is not empty
     if (mRxBuffer.isEmpty())
     {
         #ifdef DEBUG_PLUS
@@ -56,52 +66,84 @@ void Service::parsePacket()
     }
 
     // Initialize packet size
-    uint32_t size = 0;
+    uint32_t size = 1;
+    uint32_t index = 0;
 
     // Function to safely increment size
-    auto upSize = [&size, this](int plus)
+    auto upSize = [&size, &index, this](int plus)
     {
         if( (size+plus) <= mRxBuffer.size() )
         {
+            #ifdef DEBUG_PLUS
+            qDebug() << "      - (" << size << "," << index << ",+" << plus << ")";
+            #endif
             size += plus;
+            index = size-1;
             return true;
         }
-        else { return false; }
+        else
+        {
+            #ifdef DEBUG_PLUS
+            qDebug() << "      - No more data to read need(" << size+plus << ") left(" << mRxBuffer.size() << ")";
+            #endif
+            return false;
+        }
     };
 
-    // Check packet
-    if( (uint8_t)mRxBuffer[size] != (uint8_t)0xFF )
+    // size = 1
+    // index = 0
+    if( (uint8_t)mRxBuffer[index] != (uint8_t)0xFF )
     {
         #ifdef DEBUG_PLUS
         qDebug() << "      - Packet byte 0 must be 0xFF";
         #endif
-        mRxBuffer.remove(0, size+1);
+        mRxBuffer.remove(0, size);
         return;
     }
-    if(!upSize(1)) { return ; }
-    if( (uint8_t)mRxBuffer[size] != (uint8_t)0xFF )
+
+    if( !upSize(1) ) { return ; }
+
+    // size = 2
+    // index = 1
+    if( (uint8_t)mRxBuffer[index] != (uint8_t)0xFF )
     {
         #ifdef DEBUG_PLUS
         qDebug() << "      - Packet byte 1 must be 0xFF";
         #endif
-        mRxBuffer.remove(0, size+1);
+        mRxBuffer.remove(0, size);
         return;
     }
-    if(!upSize(1)) { return ; }
-    if( (uint8_t)mRxBuffer[size] != (uint8_t)0xFD )
+
+    if( !upSize(1) ) { return ; }
+
+    // size = 3
+    // index = 2
+    if( (uint8_t)mRxBuffer[index] != (uint8_t)0xFD )
     {
         #ifdef DEBUG_PLUS
         qDebug() << "      - Packet byte 2 must be 0xFD";
         #endif
-        mRxBuffer.remove(0, size+1);
+        mRxBuffer.remove(0, size);
         return;
     }
-    if(!upSize(3)) { return ; }
-    uint8_t lenL = mRxBuffer[size]; // 5
-    if(!upSize(1)) { return ; }
-    uint8_t lenH = mRxBuffer[size]; // 6
-    if(!upSize(1)) { return ; }
+
+    if( !upSize(3) ) { return ; }
+
+    // size = 6
+    // index = 5
+    uint8_t lenL = mRxBuffer[index]; // 5
+
+    if( !upSize(1) ) { return ; }
+    
+    // size = 7
+    // index = 6
+    uint8_t lenH = mRxBuffer[index]; // 6
     int len = Packet::MakeWord(lenL, lenH);
+
+    #ifdef DEBUG_PLUS
+    qDebug() << "      - Packet len(" << len << ")";
+    #endif
+
     if(!upSize(len)) { return ; }
 
     #ifdef DEBUG_PLUS
@@ -169,9 +211,12 @@ void Service::processPacket_Ping(const Packet& pack)
             // each packet received is a servo that give its ID
             uint8_t id = pack.getId();
             mPingResult << id;
+            
             #ifdef DEBUG_PLUS
             qDebug() << "      - Ping new id detected (" << id << ")";
             #endif
+
+            emit newPingIdReceived(id);
             break;
         }
         default:
@@ -180,6 +225,21 @@ void Service::processPacket_Ping(const Packet& pack)
             break;
         }
     }
+}
+
+/* ============================================================================
+ *
+ * */
+void Service::endCommand()
+{
+    mIsRunning = false;
+    mTimerOut.stop();
+
+    // Signal to listeners
+    emit commandEnded();
+
+    // Try to send next command
+    QTimer::singleShot(0, this, SLOT(sendNextCommand()) );
 }
 
 /* ============================================================================
@@ -211,6 +271,7 @@ void Service::sendNextCommand()
 
     // Command is now running
     mIsRunning = true;
+    int timeout = DefaultTimeout;
 
     // Take next comment
     mCurrentCommand = mCommandQueue.dequeue();
@@ -218,6 +279,7 @@ void Service::sendNextCommand()
     // Reset ping result if it is an other ping command
     if(mCurrentCommand.getType() == Command::Type::ping)
     {
+        timeout = PingTimeout;
         mPingResult.clear();
     }
 
@@ -229,8 +291,15 @@ void Service::sendNextCommand()
     #endif
 
     // Start timeout timer
-    // mTimerOut.start(CommandTimeout);
+    mTimerOut.start(timeout);
+}
 
+/* ============================================================================
+ *
+ * */
+void Service::manageCommandTimeout()
+{
+    endCommand();
 }
 
 /* ============================================================================
@@ -239,7 +308,7 @@ void Service::sendNextCommand()
 void Service::receiveData(const QByteArray& data)
 {
     #ifdef DEBUG_PLUS
-    qDebug() << "  + Service::parseData(" << data << ")";
+    qDebug() << "  + Service::receiveData(" << data << ")";
     #endif
 
     // First store data
@@ -248,14 +317,6 @@ void Service::receiveData(const QByteArray& data)
     //! Try to get packet from it
     parsePacket();
 }
-
-/* ============================================================================
- *
- * */
-// void Service::sendTest()
-// {
-//     // registerCommand();
-// }
 
 /* ============================================================================
  *

@@ -3,14 +3,16 @@
 #pragma once
 
 // Qt
-#include <QList>
 #include <QDebug>
+#include <QVector>
 #include <QObject>
 
 // woo
 #include <woo/xl320/Servo.h>
 #include <woo/xl320/Service.h>
 #include <woo/xl320/SerialComDevice.h>
+
+using namespace woo::xl320;
 
 //!
 //!
@@ -28,12 +30,14 @@ class Test01 : public QObject
     woo::xl320::SerialComDevice mSerialComDevice;
 
     //! 
-    QList<woo::xl320::Servo> mServos;
+    QList<woo::xl320::Servo*> mServos;
 
 public:
     
     Test01()
     { }
+
+public slots:
 
     //!
     int start(const char* dev, qint32 baud = 115200)
@@ -54,6 +58,12 @@ public:
         connect(&mService        , &woo::xl320::Service::commandTransmissionRequested   ,
                 &mSerialComDevice, &woo::xl320::SerialComDevice::sendData               , Qt::DirectConnection );
 
+        // Connect service with the test object
+        connect(&mService        , &woo::xl320::Service::newPingIdReceived              ,
+                this             , &Test01::onNewId                                     , Qt::DirectConnection );
+        connect(&mService        , &woo::xl320::Service::commandEnded                   ,
+                this             , &Test01::onCommandFinish                             , Qt::DirectConnection );
+
         // Reset state machine
         mState = 0;
         QTimer::singleShot(0, this, SLOT(nextWork()));
@@ -69,29 +79,49 @@ public:
             {
                 qDebug() << "# Send ping in 2 sec";
                 QTimer::singleShot(2000, &mService, SLOT(sendPing()));
-                mState++;
+                break;
             }
             case 1:
             {
                 QList<uint8_t> ids = mService.getPingResult();
                 qDebug() << "# Found " << ids.size() << "ids";
-                
-                mServos.resize(ids.size());
-                for(int i=0 ; i<ids.size() ; i++)
-                {
-                    mServos[i].setId(ids[i]);
-                    // mService
-                }
 
-                mState++;
+                if (mServos.size()>0)
+                {
+                    qDebug() << "# Pull ModelNumber value";
+                    mServos[0]->pull(Servo::RegisterIndex::ModelNumber);
+                }
+                else
+                {
+                    qDebug() << "# No servo available... stop test";
+                }
+                break;
+            }
+            case 2:
+            {
+                qDebug() << "# ModelNumber of servo " << mServos[0]->get(Servo::RegisterIndex::ModelNumber);
+
+                break;
             }
         }
-        // Restart state machine
-        QTimer::singleShot(0, this, SLOT(nextWork()));
     }
 
 
-};
+    void onNewId(uint8_t id)
+    {
+        qDebug() << "# New id" << id;
+        mServos << mService.getServo(id);
+    }
 
+    void onCommandFinish()
+    {
+        qDebug() << "# Command finish";
+        
+        mState++;
+        QTimer::singleShot(0, this, SLOT(nextWork()));
+
+    }
+
+};
 
 #endif // TEST01_H

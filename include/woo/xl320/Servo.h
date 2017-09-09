@@ -21,6 +21,11 @@ class Service;
 //!
 class Servo
 {
+    //!
+    friend class Service;
+
+public :
+
     //! Access right
     enum RegisterAccess { NoAccess, ReadOnly, WriteOnly, ReadWrite };
 
@@ -88,10 +93,10 @@ class Servo
     //! Return the size of the all register block
     static int RegisterMapSize();
 
-    // ========================================================================
+public:
 
     // Associated service
-    // service*
+    Service* mService;
 
     // Id
     uint8_t mId;
@@ -102,19 +107,19 @@ class Servo
     //! Image that represents non sync user modifications
     QByteArray mRegisterWorkingData;
 
-public:
-
     //! Constructor
-    Servo(uint8_t id = 1);
+    Servo(uint8_t id = 1, Service* service = 0);
 
-    // basic setters
-    void setId(uint8_t id) { mId = id; }
+public:
 
     //! To extract a value from working registers
     uint16_t get(RegisterIndex index);
 
     //! To set a value in working registers
     void set(RegisterIndex index, uint16_t value);
+
+    //! Get remote value from servo
+    void pull(RegisterIndex index);
 
 
 // Servo
@@ -124,7 +129,6 @@ public:
 
 // packet   // packet
 
-// pull(RegisterIndex index) {  }
 // pull(RegisterIndex beg, RegisterIndex end)
 // pullAll()
 
