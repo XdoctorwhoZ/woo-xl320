@@ -106,6 +106,14 @@ public slots:
             case 3:
             {
                 qDebug() << "#" << mServos[0]->toString();
+
+                mServos[0]->set(Servo::RegisterIndex::GoalPosition, 0);
+                mServos[0]->push();
+                break;
+            }
+            case 4:
+            {
+                qDebug() << "fin";
                 break;
             }
         }

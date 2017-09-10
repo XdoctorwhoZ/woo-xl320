@@ -104,6 +104,10 @@ Servo::Servo(uint8_t id, Service* service)
     const int map_size = RegisterMapSize();
     mRegisterWorkingData.resize(map_size);
     mRegisterWorkingData.fill(0);
+
+    mModiflags.reset();
+    mRegisterModifiedData.resize(map_size);
+    mRegisterModifiedData.fill(0);
 }
 
 /* ============================================================================
@@ -119,7 +123,12 @@ uint16_t Servo::get(RegisterIndex index) const
  * */
 void Servo::set(RegisterIndex index, uint16_t value)
 {
-    set(index, value, mRegisterWorkingData);
+    const RegisterEntry& entry = RegisterMap[index];
+    set(index, value, mRegisterModifiedData);
+    for(uint8_t i=entry.address ; i<entry.address+entry.size ; i++)
+    {
+        mModiflags.set(i);
+    }
 }
 
 /* ============================================================================
@@ -145,6 +154,53 @@ void Servo::pull(RegisterIndex beg_index, RegisterIndex end_index)
 /* ============================================================================
  *
  * */
+void Servo::push()
+{
+    if (!mService) {
+        return;
+    }
+
+    int i=0;
+
+    auto nextBlock = [this, &i]()
+    {
+        uint8_t addr;
+        uint8_t size;
+
+        while( (!mModiflags.test(i)) && (i<53) )
+        {
+            i++;
+        }
+        addr = i;
+
+        while( (mModiflags.test(i)) && (i<53) )
+        {
+            i++;
+        }
+        size = i - addr;
+
+        QByteArray data = mRegisterModifiedData.mid(addr, size);
+
+        mService->registerCommand(
+            Command ( Command::Type::push
+                    , mId
+                    , addr
+                    , size
+                    , data
+               )
+            );
+    };
+
+    // TODO
+
+
+    // 
+    mModiflags.reset();
+}
+
+/* ============================================================================
+ *
+ * */
 QString Servo::toString() const
 {
     QString str;
@@ -153,11 +209,9 @@ QString Servo::toString() const
     while (strcmp(RegisterMap[i].area, "END") != 0)
     {
         const RegisterEntry& r = RegisterMap[i];
-
         str += QString("%1(%2), ")
             .arg(r.name)
             .arg(get((RegisterIndex)r.address));
-
         i++;
     }
 

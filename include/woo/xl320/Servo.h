@@ -11,6 +11,9 @@
 #include "DllSpec.h"
 #include "Command.h"
 
+// Std
+#include <bitset>
+
 // ---
 namespace woo { namespace xl320 {
 
@@ -84,6 +87,13 @@ public :
         Punch                   = 36,
     };
 
+    //! 
+    struct ModifEntry
+    {
+        uint8_t     addr;
+        QByteArray  data;
+    };
+
     //! Map of registers of the servo
     static const RegisterEntry RegisterMap[];
 
@@ -104,6 +114,11 @@ public:
     //! Image that represents non sync user modifications
     QByteArray mRegisterWorkingData;
 
+    //! When a bit is set to 1 the byte has been modified
+    std::bitset<53> mModiflags;
+    //! Image that store data that the user want to modify
+    QByteArray mRegisterModifiedData;
+
     //! Constructor
     Servo(uint8_t id = 1, Service* service = 0);
 
@@ -123,6 +138,9 @@ public:
     void pull(RegisterIndex beg_index, RegisterIndex end_index);
     void pullAll() { pull(ModelNumber, Punch); }
 
+    //! Send local modification to remote servo
+    void push();
+
     //! Get all values dumped in text
     QString toString() const;
 
@@ -137,14 +155,6 @@ private:
 
     //! Update locals and remotes values
     void update(RegisterIndex index, const QByteArray& value);
-
-// pull(RegisterIndex beg, RegisterIndex end)
-// pullAll()
-
-// push()
-
-
-
 
 };
 
