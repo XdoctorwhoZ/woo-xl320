@@ -32,11 +32,17 @@ QByteArray Command::toDataArray()
         }
         case Type::pull:
         {
+            // params
+            const int params_size = 4;
+            uint8_t params[params_size];
+
             QByteArray params;
-            params += Packet::WordLoByte(mAddr);
-            params += Packet::WordHiByte(mAddr);
-            params += Packet::WordLoByte(mSize);
-            params += Packet::WordHiByte(mSize);
+            params += DXL_LOBYTE(addr);
+            params += DXL_HIBYTE(addr);
+            params += DXL_LOBYTE(size);
+            params += DXL_HIBYTE(size);
+
+
             pack.build(mId, Packet::Instruction::InsRead, params);
             break;
         }

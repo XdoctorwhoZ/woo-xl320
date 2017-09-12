@@ -94,13 +94,7 @@ Packet::PacketState Packet::validate() const
  * */
 QString Packet::toString() const
 {
-    return QString("id(%1),len(%2),ins(%3),params(%4),valid(%5)")
-        .arg(getId())
-        .arg(getLength())
-        .arg(getInstruction())
-        .arg(getParameterCount())
-        .arg(validate())
-        ;
+
 }
 
 /* ============================================================================

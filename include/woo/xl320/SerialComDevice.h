@@ -3,28 +3,16 @@
 #pragma once
 
 // Qt
-#include <QObject>
-#include <QByteArray>
-#include <QtSerialPort/QSerialPort>
+
 
 // ---
 namespace woo { namespace xl320 {
 
 //! Interface for a communication device
-class SerialComDevice : public QObject
+class SerialComDevice
 {
-    Q_OBJECT
 
-    //! Serial port controller
-    QSerialPort* mPort;
 
-    // Port configuration
-    QString                     mPortname;
-    qint32                      mBaudrate;
-    QSerialPort::DataBits       mDatabits;
-    QSerialPort::StopBits       mStopbits;
-    QSerialPort::Parity         mParity;
-    QSerialPort::FlowControl    mFlowctrl;
 
 public:
 

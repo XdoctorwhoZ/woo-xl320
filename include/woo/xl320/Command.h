@@ -21,7 +21,6 @@ public:
     //! Available type for command
     enum Type
     {
-        none,
         ping, // Send a ping to all servos to get available ids
         pull,
         push,
@@ -47,18 +46,11 @@ private:
 public:
 
     //! Constructor
-    Command(Type type = none
+    Command(Type type = ping
            , uint8_t id = Packet::Constant::BroadcastId
            , uint8_t addr = 0
            , uint8_t size = 0
            , const QByteArray& data = QByteArray());
-
-    // Basic getters
-    Type        getType() const { return mType; }
-    uint8_t     getId()   const { return mId;   }
-    uint8_t     getAddr() const { return mAddr; }
-    uint8_t     getSize() const { return mSize; }
-    QByteArray  getData() const { return mData; }
 
     //!
     QByteArray toDataArray();

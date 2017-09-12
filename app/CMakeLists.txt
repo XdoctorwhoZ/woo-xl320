@@ -3,22 +3,18 @@ MESSAGE("[ in] ${CMAKE_CURRENT_LIST_FILE}")
 ADD_EXECUTABLE(
     test-01
     test-01/main.cxx
-    test-01/Test01.h
     )
 
+# ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
 
-
-
+TARGET_LINK_LIBRARIES( test-01 LINK_PUBLIC ${Boost_LIBRARIES} -pthread)
 
 TARGET_LINK_LIBRARIES(
     test-01
-    woo-arduino-xl320
+    woo-xl320
     )
 
-QT5_USE_MODULES(
-    test-01
-    Core SerialPort
-    )
+
 
 
 

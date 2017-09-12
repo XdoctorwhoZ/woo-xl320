@@ -11,9 +11,6 @@
 #include "DllSpec.h"
 #include "Command.h"
 
-// Std
-#include <bitset>
-
 // ---
 namespace woo { namespace xl320 {
 
@@ -24,11 +21,6 @@ class Service;
 //!
 class Servo
 {
-    //!
-    friend class Service;
-
-public :
-
     //! Access right
     enum RegisterAccess { NoAccess, ReadOnly, WriteOnly, ReadWrite };
 
@@ -87,13 +79,6 @@ public :
         Punch                   = 36,
     };
 
-    //! 
-    struct ModifEntry
-    {
-        uint8_t     addr;
-        QByteArray  data;
-    };
-
     //! Map of registers of the servo
     static const RegisterEntry RegisterMap[];
 
@@ -103,58 +88,47 @@ public :
     //! Return the size of the all register block
     static int RegisterMapSize();
 
-public:
+    // ========================================================================
 
     // Associated service
-    Service* mService;
+    // service*
 
     // Id
     uint8_t mId;
 
+    //! Image that represents register values inside the servo
+    QByteArray mRegisterDistantData;
+
     //! Image that represents non sync user modifications
     QByteArray mRegisterWorkingData;
 
-    //! When a bit is set to 1 the byte has been modified
-    std::bitset<53> mModiflags;
-    //! Image that store data that the user want to modify
-    QByteArray mRegisterModifiedData;
-
-    //! Constructor
-    Servo(uint8_t id = 1, Service* service = 0);
-
 public:
 
-    // Basic getters
-    uint8_t getId() { return mId; }
+    //! Constructor
+    Servo();
 
     //! To extract a value from working registers
-    uint16_t get(RegisterIndex index) const;
+    uint16_t get(RegisterIndex index);
 
     //! To set a value in working registers
     void set(RegisterIndex index, uint16_t value);
 
-    //! Get remote value from servo
-    void pull(RegisterIndex index) { pull(index, index); }
-    void pull(RegisterIndex beg_index, RegisterIndex end_index);
-    void pullAll() { pull(ModelNumber, Punch); }
 
-    //! Send local modification to remote servo
-    void push();
+// Servo
+// Service      // data
+// ComDevice
+// SerialComDevice : public ComDevice // binary
 
-    //! Get all values dumped in text
-    QString toString() const;
+// packet   // packet
 
-private:
+// pull(RegisterIndex index) {  }
+// pull(RegisterIndex beg, RegisterIndex end)
+// pullAll()
 
-    //! To extract a value from working registers
-    uint16_t get(RegisterIndex index, const QByteArray& regTable) const;
+// push()
 
-    //! To set a value in working registers
-    void set(RegisterIndex index, uint16_t value, QByteArray& regTable);
-    void set(RegisterIndex index, const QByteArray& value, QByteArray& regTable);
 
-    //! Update locals and remotes values
-    void update(RegisterIndex index, const QByteArray& value);
+
 
 };
 

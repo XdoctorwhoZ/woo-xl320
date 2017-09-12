@@ -1,23 +1,39 @@
 // woo
 #include <woo/xl320/Service.h>
 
-// Qt
-#include <QDebug>
-
 // ---
 using namespace woo::xl320;
-
-// Uncomment to enable more debug info
-#define DEBUG_PLUS 1
 
 /* ============================================================================
  *
  * */
-Service::Service(QObject* qparent)
-    : QObject(qparent)
-    , mIsRunning(false)
+std::string Service::ByteVector2HexStr(const std::vector<uint8_t>& vec, uint32_t limit)
 {
-    connect(&mTimerOut, &QTimer::timeout, this, &Service::manageCommandTimeout);
+    std::ostringstream s;
+    s << "[" << vec.size() << "][";
+
+    for(auto it=vec.begin() ; it!=vec.end() ; ++it)
+    {
+        if(it != vec.begin()) { s << ','; }
+        s << "0x" << std::hex << (int)*it;
+
+        limit--;
+        if(limit <= 0) break;
+    }
+
+    s << ']';
+    return s.str();
+}
+
+/* ============================================================================
+ *
+ * */
+Service::Service(const char* dev, uint32_t baud)
+    : mSerialDevice(dev)
+    , mSerialBaudrate(baud)
+    , mReadBuffer(ReadBufferMaxSize)
+{
+    mParseBuffer.reserve(ReadBufferMaxSize);
 }
 
 /* ============================================================================
@@ -25,336 +41,139 @@ Service::Service(QObject* qparent)
  * */
 Service::~Service()
 {
-
+    stop();
 }
 
 /* ============================================================================
  *
  * */
-void Service::registerCommand(const Command& cmd)
+void Service::start()
 {
-    mCommandQueue.enqueue(cmd);
-    QTimer::singleShot(0, this, SLOT(sendNextCommand()));
-}
+    boost::system::error_code ec;
 
-/* ============================================================================
- *
- * */
-Servo* Service::getServo(uint8_t id)
-{
-    for(auto& s : mServos)
+    // log
+    LOG_INFO << "start...";
+
+    // Check if the port is already opened
+    if (mPort)
     {
-        if(s->getId() == id)
-        {
-            return s.data();
-        }
-    }
-    QSharedPointer<Servo> servoPtr(new Servo(id, this));
-    mServos << servoPtr;
-    return servoPtr.data();
-}
-
-/* ============================================================================
- *
- * */
-void Service::parsePacket()
-{
-    #ifdef DEBUG_PLUS
-    qDebug() << "  + Service::parsePacket(" << mRxBuffer << ")(" << mRxBuffer.size() << ")";
-    #endif
-
-    // Check if the buffer is not empty
-    if (mRxBuffer.isEmpty())
-    {
-        #ifdef DEBUG_PLUS
-        qDebug() << "      - Rx buffer is empty";
-        #endif
+        LOG_WARNING << "port is already opened";
         return;
     }
 
-    // Initialize packet size
-    uint32_t size = 1;
-    uint32_t index = 0;
+    // debug
+    LOG_DEBUG << "device   (" << mSerialDevice   << ")";
+    LOG_DEBUG << "baudrate (" << mSerialBaudrate << ")";
 
-    // Function to safely increment size
-    auto upSize = [&size, &index, this](int plus)
+    // Create serial port
+    mPort = SerialPortPtr(new boost::asio::serial_port(mIos));
+    mPort->open(mSerialDevice, ec);
+    if (ec)
     {
-        if( (size+plus) <= mRxBuffer.size() )
-        {
-            #ifdef DEBUG_PLUS
-            qDebug() << "      - (" << size << "," << index << ",+" << plus << ")";
-            #endif
-            size += plus;
-            index = size-1;
-            return true;
-        }
-        else
-        {
-            #ifdef DEBUG_PLUS
-            qDebug() << "      - No more data to read need(" << size+plus << ") left(" << mRxBuffer.size() << ")";
-            #endif
-            return false;
-        }
-    };
-
-    // size = 1
-    // index = 0
-    if( (uint8_t)mRxBuffer[index] != (uint8_t)0xFF )
-    {
-        #ifdef DEBUG_PLUS
-        qDebug() << "      - Packet byte 0 must be 0xFF";
-        #endif
-        mRxBuffer.remove(0, size);
+        LOG_ERROR
+            << "port openning failed... dev("
+            << mSerialDevice << "), err(" << ec.message().c_str() << ")";
         return;
     }
 
-    if( !upSize(1) ) { return ; }
+    // option settings...
+    mPort->set_option(boost::asio::serial_port_base::baud_rate(mSerialBaudrate));
+    mPort->set_option(boost::asio::serial_port_base::character_size(8));
+    mPort->set_option(boost::asio::serial_port_base::stop_bits(boost::asio::serial_port_base::stop_bits::one));
+    mPort->set_option(boost::asio::serial_port_base::parity(boost::asio::serial_port_base::parity::none));
+    mPort->set_option(boost::asio::serial_port_base::flow_control(boost::asio::serial_port_base::flow_control::none));
 
-    // size = 2
-    // index = 1
-    if( (uint8_t)mRxBuffer[index] != (uint8_t)0xFF )
+    // You need to use boost::asio::io_service::work.
+    // Think of it as a dummy work item, so io_service::run never runs out of work, and thus doesn't return immediately.
+    auto work = boost::asio::io_service::work(mIos);
+    // Start ios run thread
+    boost::thread t(boost::bind(&boost::asio::io_service::run, &mIos));
+
+    // Start async read loop
+    prepareAsyncRead();
+
+    // log
+    LOG_INFO << "started";
+}
+
+/* ============================================================================
+ *
+ * */
+void Service::stop()
+{
+    boost::mutex::scoped_lock look(mMutex);
+    if (mPort)
     {
-        #ifdef DEBUG_PLUS
-        qDebug() << "      - Packet byte 1 must be 0xFF";
-        #endif
-        mRxBuffer.remove(0, size);
+        mPort->cancel();
+        mPort->close();
+        mPort.reset();
+    }
+    mIos.stop();
+    mIos.reset();
+
+    // log
+    LOG_INFO << "stop";
+}
+
+/* ============================================================================
+ *
+ * */
+void Service::prepareAsyncRead()
+{
+    // log
+    LOG_TRACE << "prepare async read";
+
+    // Check that port is ready
+    if (mPort.get() == NULL || !mPort->is_open())
+    {
+        LOG_WARNING << "port not ready";
+    }
+
+    // Request async read
+    mPort->async_read_some(
+        boost::asio::buffer(mReadBuffer, ReadBufferMaxSize),
+        boost::bind(
+            &Service::readReceivedData,
+            this,
+            boost::asio::placeholders::error, 
+            boost::asio::placeholders::bytes_transferred
+            )
+        );
+}
+
+/* ============================================================================
+ *
+ * */
+void Service::readReceivedData(const boost::system::error_code& ec, size_t bytes_transferred)
+{
+    // lock data
+    boost::mutex::scoped_lock look(mMutex);
+
+    // log
+    LOG_TRACE << "read received data";
+
+    // Check that port is ready
+    if (mPort.get() == NULL || !mPort->is_open())
+    {
+        LOG_WARNING << "port not ready";
         return;
     }
 
-    if( !upSize(1) ) { return ; }
-
-    // size = 3
-    // index = 2
-    if( (uint8_t)mRxBuffer[index] != (uint8_t)0xFD )
+    // Check if there are some errors
+    if (ec)
     {
-        #ifdef DEBUG_PLUS
-        qDebug() << "      - Packet byte 2 must be 0xFD";
-        #endif
-        mRxBuffer.remove(0, size);
+        LOG_WARNING << "async read error(" << ec.message().c_str() << ")";
+        prepareAsyncRead();
         return;
     }
 
-    if( !upSize(3) ) { return ; }
+    LOG_TRACE << bytes_transferred;
+    LOG_TRACE << ByteVector2HexStr(mReadBuffer, bytes_transferred);
 
-    // size = 6
-    // index = 5
-    uint8_t lenL = mRxBuffer[index]; // 5
+    // mParseBuffer.insert(mParseBuffer.end(), mReadBuffer.begin(), mReadBuffer.end());
+    // mReadBuffer.clear();   
 
-    if( !upSize(1) ) { return ; }
-    
-    // size = 7
-    // index = 6
-    uint8_t lenH = mRxBuffer[index]; // 6
-    int len = Packet::MakeWord(lenL, lenH);
-
-    #ifdef DEBUG_PLUS
-    qDebug() << "      - Packet len(" << len << ")";
-    #endif
-
-    if(!upSize(len)) { return ; }
-
-    #ifdef DEBUG_PLUS
-    qDebug() << "      - Packet complete size(" << size << ")";
-    #endif
-
-    // Use packet
-    QByteArray pbuffer = mRxBuffer.left(size);
-    Packet pack(pbuffer);
-    processPacket(pack);
-
-    // Remove used data
-    mRxBuffer.remove(0, size);
-
-    // Try to parse an other packet
-    parsePacket();
+    // Restart async read
+    prepareAsyncRead();
 }
 
-/* ============================================================================
- *
- * */
-void Service::processPacket(const Packet& pack)
-{
-    #ifdef DEBUG_PLUS
-    qDebug() << "  + Service::processPacket(" << pack.toString() << ")";
-    #endif
-
-    switch(mCurrentCommand.getType())
-    {
-        case Command::Type::none: break;
-        case Command::Type::ping: processPacket_Ping(pack); break;
-        case Command::Type::pull: processPacket_Pull(pack); break;
-        case Command::Type::push: processPacket_Push(pack); break;
-    }
-}
-
-/* ============================================================================
- *
- * */
-void Service::processPacket_Ping(const Packet& pack)
-{
-    switch(pack.getInstruction())
-    {
-        case Packet::Instruction::InsPing:
-        {
-            #ifdef DEBUG_PLUS
-            qDebug() << "      - Ping echo";
-            #endif
-            break;
-        }
-        case Packet::Instruction::InsStatus:
-        {
-            // each packet received is a servo that give its ID
-            uint8_t id = pack.getId();
-            mPingResult << id;
-            
-            #ifdef DEBUG_PLUS
-            qDebug() << "      - Ping new id detected (" << id << ")";
-            #endif
-
-            emit newPingIdReceived(id);
-            break;
-        }
-        default:
-        {
-            qWarning("      - Unexpected message received in ping context %s", pack.toString().toStdString().c_str());
-            break;
-        }
-    }
-}
-
-/* ============================================================================
- *
- * */
-void Service::processPacket_Pull(const Packet& pack)
-{
-    switch(pack.getInstruction())
-    {
-        case Packet::Instruction::InsRead:
-        {
-            #ifdef DEBUG_PLUS
-            qDebug() << "      - Read echo";
-            #endif
-            break;
-        }
-        case Packet::Instruction::InsStatus:
-        {
-            uint8_t id = pack.getId();
-            Servo* servo = getServo(id);
-            servo->update((Servo::RegisterIndex)mCurrentCommand.getAddr(), pack.getReadData());
-            endCommand();
-            break;
-        }
-        default:
-        {
-            qWarning("      - Unexpected message received in ping context %s", pack.toString().toStdString().c_str());
-            break;
-        }
-    }
-}
-
-/* ============================================================================
- *
- * */
-void Service::processPacket_Push(const Packet& pack)
-{
-
-}
-
-/* ============================================================================
- *
- * */
-void Service::endCommand()
-{
-    mIsRunning = false;
-    mTimerOut.stop();
-
-    // Signal to listeners
-    emit commandEnded();
-
-    // Try to send next command
-    QTimer::singleShot(0, this, SLOT(sendNextCommand()) );
-}
-
-/* ============================================================================
- *
- * */
-void Service::sendNextCommand()
-{
-    #ifdef DEBUG_PLUS
-    qDebug() << "  + Service::sendNextCommand()";
-    #endif
-
-    // No more command to send
-    if( mCommandQueue.isEmpty() )
-    {
-        #ifdef DEBUG_PLUS
-        qDebug() << "      - Command queue is empty, no more command to send";
-        #endif
-        return;
-    }
-
-    // A command is already running
-    if( mIsRunning )
-    {
-        #ifdef DEBUG_PLUS
-        qDebug() << "      - A command is already running, wait...";
-        #endif
-        return;
-    }
-
-    // Command is now running
-    mIsRunning = true;
-    int timeout = DefaultTimeout;
-
-    // Take next comment
-    mCurrentCommand = mCommandQueue.dequeue();
-
-    // Reset ping result if it is an other ping command
-    if(mCurrentCommand.getType() == Command::Type::ping)
-    {
-        timeout = PingTimeout;
-        mPingResult.clear();
-    }
-
-    // Send command
-    emit commandTransmissionRequested( mCurrentCommand.toDataArray() );
-
-    #ifdef DEBUG_PLUS
-    qDebug() << "      - command sent(" << mCurrentCommand.toDataArray() << ")";
-    #endif
-
-    // Start timeout timer
-    mTimerOut.start(timeout);
-}
-
-/* ============================================================================
- *
- * */
-void Service::manageCommandTimeout()
-{
-    endCommand();
-}
-
-/* ============================================================================
- *
- * */
-void Service::receiveData(const QByteArray& data)
-{
-    #ifdef DEBUG_PLUS
-    qDebug() << "  + Service::receiveData(" << data << ")";
-    #endif
-
-    // First store data
-    mRxBuffer += data;
-
-    //! Try to get packet from it
-    parsePacket();
-}
-
-/* ============================================================================
- *
- * */
-void Service::sendPing()
-{
-    registerCommand( Command(Command::Type::ping) );
-}

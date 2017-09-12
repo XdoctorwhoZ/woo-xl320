@@ -44,7 +44,7 @@ public:
         InsAction          = 0x05 , // Instruction that executes the Packet that was registered beforehand using Reg Write
         InsFactoryReset    = 0x06 , // Instruction that resets the Control Table to its initial factory default settings
         InsReboot          = 0x08 , // Instruction to reboot the Device
-        InsStatus          = 0x55 , // (85) Return Instruction for the Instruction Packet
+        InsStatus          = 0x55 , // Return Instruction for the Instruction Packet
         InsSyncRead        = 0x82 , // For multiple devices, Instruction to read data from the same Address with the same length at once
         InsSyncWrite       = 0x83 , // For multiple devices, Instruction to write data on the same Address with the same length at once
         InsBulkRead        = 0x92 , // For multiple devices, Instruction to read data from different Addresses with different lengths at once
@@ -85,9 +85,8 @@ public:
     uint16_t    getLength()         const { return MakeWord(mData[5], mData[6]); }
     Instruction getInstruction()    const { return static_cast<Instruction>((uint8_t)mData[7]); }
     uint16_t    getParameterCount() const { return getLength() - 3; }
-    uint8_t     getParameter(int n) const { return mData[8+n]; }    
+    uint8_t     getParameter(int n) const { return mData[8+n]; }
     uint16_t    getCrc()            const { return MakeWord(mData[mData.size()-2], mData[mData.size()-1]); }
-    QByteArray  getReadData()       const { return mData.mid(9, getParameterCount()-1); }
 
     //! Function to check packet structure
     PacketState validate() const;
