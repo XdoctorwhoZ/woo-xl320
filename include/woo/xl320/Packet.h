@@ -2,9 +2,11 @@
 #define WOO_XL320_PACKET_H
 #pragma once
 
-// Qt
-#include <QObject>
-#include <QByteArray>
+// std
+#include <vector>
+#include <cstdarg>
+#include <cstdint>
+#include <iostream>
 
 // ---
 namespace woo { namespace xl320 {
@@ -44,7 +46,7 @@ public:
         InsAction          = 0x05 , // Instruction that executes the Packet that was registered beforehand using Reg Write
         InsFactoryReset    = 0x06 , // Instruction that resets the Control Table to its initial factory default settings
         InsReboot          = 0x08 , // Instruction to reboot the Device
-        InsStatus          = 0x55 , // Return Instruction for the Instruction Packet
+        InsStatus          = 0x55 , // (85) Return Instruction for the Instruction Packet
         InsSyncRead        = 0x82 , // For multiple devices, Instruction to read data from the same Address with the same length at once
         InsSyncWrite       = 0x83 , // For multiple devices, Instruction to write data on the same Address with the same length at once
         InsBulkRead        = 0x92 , // For multiple devices, Instruction to read data from different Addresses with different lengths at once
@@ -69,30 +71,31 @@ public:
 private:
 
     //! Working data buffer
-    QByteArray& mData;
+    std::vector<uint8_t>& mData;
 
 public:
 
     //! Prepare packet manager with the following buffer
-    Packet(QByteArray& data) : mData(data) { }
+    Packet(std::vector<uint8_t>& data) : mData(data) { }
 
     //! Build a packet with the following data
     void build(uint8_t id, Instruction instruction, int params_size, ...);
-    void build(uint8_t id, Instruction instruction, const QByteArray& params);
+    void build(uint8_t id, Instruction instruction, const std::vector<uint8_t>& params);
 
     // Basic getters
     uint8_t     getId()             const { return mData[4]; }
     uint16_t    getLength()         const { return MakeWord(mData[5], mData[6]); }
     Instruction getInstruction()    const { return static_cast<Instruction>((uint8_t)mData[7]); }
-    uint16_t    getParameterCount() const { return getLength() - 3; }
-    uint8_t     getParameter(int n) const { return mData[8+n]; }
-    uint16_t    getCrc()            const { return MakeWord(mData[mData.size()-2], mData[mData.size()-1]); }
+    // uint16_t    getParameterCount() const { return getLength() - 3; }
+    // uint8_t     getParameter(int n) const { return mData[8+n]; }    
+    // uint16_t    getCrc()            const { return MakeWord(mData[mData.size()-2], mData[mData.size()-1]); }
+    // std::vector<uint8_t>  getReadData()       const { return mData.mid(9, getParameterCount()-1); }
 
     //! Function to check packet structure
-    PacketState validate() const;
+    // PacketState validate() const;
 
     //! Return string representation of the packet
-    QString toString() const;
+    std::string toString() const;
 };
 
 } // xl320

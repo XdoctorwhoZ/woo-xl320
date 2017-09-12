@@ -7,9 +7,10 @@ MESSAGE("[ in] ${CMAKE_CURRENT_LIST_FILE}")
 ADD_LIBRARY(
     woo-xl320
     SHARED
+    Packet.cxx
     Service.cxx
+    Command.cxx
     )
-
 
 TARGET_LINK_LIBRARIES( woo-xl320 LINK_PUBLIC ${Boost_LIBRARIES} -pthread)
 

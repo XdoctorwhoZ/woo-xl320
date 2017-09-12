@@ -2,11 +2,7 @@
 #define WOO_XL320_COMMAND_H
 #pragma once
 
-// Qt
-#include <QObject>
-#include <QByteArray>
-
-// Woo
+// woo
 #include "Packet.h"
 
 // ---
@@ -21,6 +17,7 @@ public:
     //! Available type for command
     enum Type
     {
+        none,
         ping, // Send a ping to all servos to get available ids
         pull,
         push,
@@ -41,19 +38,26 @@ private:
     uint8_t mSize;
 
     //! Data to write
-    QByteArray mData;
+    std::vector<uint8_t> mData;
 
 public:
 
     //! Constructor
-    Command(Type type = ping
+    Command(Type type = none
            , uint8_t id = Packet::Constant::BroadcastId
            , uint8_t addr = 0
            , uint8_t size = 0
-           , const QByteArray& data = QByteArray());
+           , const std::vector<uint8_t>& data = std::vector<uint8_t>());
+
+    // Basic getters
+    Type        getType() const { return mType; }
+    uint8_t     getId()   const { return mId;   }
+    uint8_t     getAddr() const { return mAddr; }
+    uint8_t     getSize() const { return mSize; }
+    // QByteArray  getData() const { return mData; }
 
     //!
-    QByteArray toDataArray();
+    std::vector<uint8_t> toDataArray();
 };
 
 } // xl320

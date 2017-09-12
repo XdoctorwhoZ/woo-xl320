@@ -7,7 +7,7 @@ using namespace woo::xl320;
 /* ============================================================================
  *
  * */
-Command::Command(Type type, uint8_t id, uint8_t addr, uint8_t size, const QByteArray& data)
+Command::Command(Type type, uint8_t id, uint8_t addr, uint8_t size, const std::vector<uint8_t>& data)
     : mType(type)
     , mId(id)
     , mAddr(addr)
@@ -18,9 +18,9 @@ Command::Command(Type type, uint8_t id, uint8_t addr, uint8_t size, const QByteA
 /* ============================================================================
  *
  * */
-QByteArray Command::toDataArray()
+std::vector<uint8_t> Command::toDataArray()
 {
-    QByteArray buffer;
+    std::vector<uint8_t> buffer;
     Packet pack(buffer);
 
     switch(mType)
@@ -30,27 +30,21 @@ QByteArray Command::toDataArray()
             pack.build(Packet::Constant::BroadcastId, Packet::Instruction::InsPing, 0);
             break;
         }
-        case Type::pull:
-        {
-            // params
-            const int params_size = 4;
-            uint8_t params[params_size];
+    //     case Type::pull:
+    //     {
+    //         std::vector<uint8_t> params;
+    //         params += Packet::WordLoByte(mAddr);
+    //         params += Packet::WordHiByte(mAddr);
+    //         params += Packet::WordLoByte(mSize);
+    //         params += Packet::WordHiByte(mSize);
+    //         pack.build(mId, Packet::Instruction::InsRead, params);
+    //         break;
+    //     }
+    //     case Type::push:
+    //     {
 
-            QByteArray params;
-            params += DXL_LOBYTE(addr);
-            params += DXL_HIBYTE(addr);
-            params += DXL_LOBYTE(size);
-            params += DXL_HIBYTE(size);
-
-
-            pack.build(mId, Packet::Instruction::InsRead, params);
-            break;
-        }
-        case Type::push:
-        {
-
-            break;
-        }
+    //         break;
+    //     }
     }
 
     return buffer;

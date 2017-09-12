@@ -1,9 +1,6 @@
 // woo
 #include <woo/xl320/Packet.h>
 
-// Qt
-#include <QDebug>
-
 // ---
 using namespace woo::xl320;
 
@@ -45,7 +42,7 @@ void Packet::build(uint8_t id, Instruction instruction, int params_size, ...)
 /* ============================================================================
  *
  * */
-void Packet::build(uint8_t id, Instruction instruction, const QByteArray& params)
+void Packet::build(uint8_t id, Instruction instruction, const std::vector<uint8_t>& params)
 {
     // Resize buffer to be able to contains the all message
     uint16_t bufferSize = ComputeBufferSize(params.size());
@@ -76,25 +73,31 @@ void Packet::build(uint8_t id, Instruction instruction, const QByteArray& params
 /* ============================================================================
  *
  * */
-Packet::PacketState Packet::validate() const
-{
-    // Check crc
-    unsigned short crc0 = getCrc();
-    unsigned short crc1 = UpdateCRC(0, (uint8_t*)mData.data(), mData.size()-2);
-    if(crc0 != crc1) {
-        return PsBadCrc;
-    }
+// Packet::PacketState Packet::validate() const
+// {
+//     // Check crc
+//     unsigned short crc0 = getCrc();
+//     unsigned short crc1 = UpdateCRC(0, (uint8_t*)mData.data(), mData.size()-2);
+//     if(crc0 != crc1) {
+//         return PsBadCrc;
+//     }
 
-    // OK
-    return PsValid;
-}
+//     // OK
+//     return PsValid;
+// }
 
 /* ============================================================================
  *
  * */
-QString Packet::toString() const
+std::string Packet::toString() const
 {
-
+//     return QString("id(%1),len(%2),ins(%3),params(%4),valid(%5)")
+//         .arg(getId())
+//         .arg(getLength())
+//         .arg(getInstruction())
+//         .arg(getParameterCount())
+//         .arg(validate())
+//         ;
 }
 
 /* ============================================================================

@@ -3,13 +3,16 @@
 #pragma once
 
 // std
+#include <list>
 #include <deque>
+#include <queue>
 #include <vector>
 #include <thread>
 #include <sstream>
 
 // woo
 #include "Log.h"
+#include "Command.h"
 // #include "Servo.h"
 
 // boost
@@ -38,6 +41,7 @@ private:
 
     // helpers
     typedef boost::asio::io_service BioService;
+    typedef boost::asio::deadline_timer BdTimer;
     typedef boost::shared_ptr<boost::thread> ThreadPtr;
     typedef boost::shared_ptr<boost::asio::serial_port> SerialPortPtr;
 
@@ -50,6 +54,7 @@ private:
 
     //! Thread in which mIos will run
     ThreadPtr mIosThread;
+
 
     //! Serial port interface
     SerialPortPtr mPort;
@@ -66,16 +71,31 @@ private:
     boost::mutex mMutex;
 
 
+    //! Running command indicator
+    //! pass true when command is sent
+    //! pass false when command result has been received
+    bool mCommandInProcess;
+
+    //! Timer to program next command sending
+    BdTimer mCommandTimer;
+    BdTimer mCommandTimeout;
+
+    //! Command currently executed
+    Command mCurrentCommand;
+
+    //! Commands that must be send
+    std::queue<Command> mCommandQueue;
 
 
+    //! List of ids reached by ping
+    std::list<uint8_t> mPingResult;
 
-    // //! Running command indicator
-    // //! pass true when command is sent
-    // //! pass false when command result has been received
-    // bool mIsRunning;
 
-    // //! Commands that must be send
-    // QQueue<Command> mCommandQueue;
+    //! All servos connected to this service
+    // QList<QSharedPointer<Servo>> mServos;
+
+    //! Timer to control command timeout
+    // QTimer mTimerOut;
 
 public:
 
@@ -92,6 +112,16 @@ public:
     //! Stop services threads
     void stop();
 
+    //! To send a ping and get available servo id connected
+    void sendPing();
+
+    //! Function to register a command in the queue
+    void registerCommand(const Command& cmd);
+
+    //! Take the next command in the tx queue and send it
+    //! If a command is already running, a timer will call back this function later
+    void sendNextCommand();
+
 private:
 
     //! Request async read on the port
@@ -100,8 +130,22 @@ private:
     //! Read data received async
     void readReceivedData(const boost::system::error_code& ec, size_t bytes_transferred); 
 
-    //! Function to register a command in the queue
-    // void registerCommand(const Command& cmd);
+    //! Parse packet contained in rx buffer
+    void parsePacket();
+
+    //! Use packet information to update service
+    void processPacket(const Packet& pack);
+    void processPacket_Ping(const Packet& pack);
+    void processPacket_Pull(const Packet& pack);
+    void processPacket_Push(const Packet& pack);
+
+    //! End the command process
+    void endCommand();
+
+
+
+
+
 
 
 
@@ -111,10 +155,6 @@ private:
     // QList<int> getPingResult() const { return mResult.ping; }
 
 
-    //! Take the next command in the tx queue and send it
-    //! If a command is already running, a timer will call back this function later
-    // void sendNextCommand();
-
 
     //! Parse data from device com
     // void parseData(const QByteArray& data);
@@ -123,8 +163,6 @@ private:
     // //! To send test request
     // void sendTest();
 
-    //! To send a ping
-    // void sendPing();
 
 
     //! To send data through com device

@@ -167,6 +167,8 @@ int main(int argc, char *argv[])
     ser.start();
 
 
+    boost::this_thread::sleep_for(boost::chrono::milliseconds(1000));
+    ser.sendPing();
     boost::this_thread::sleep_for(boost::chrono::milliseconds(100000));
 
     return 0;
