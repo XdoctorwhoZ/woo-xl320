@@ -90,7 +90,9 @@ void Service::start()
     // Think of it as a dummy work item, so io_service::run never runs out of work, and thus doesn't return immediately.
     auto work = boost::asio::io_service::work(mIos);
     // Start ios run thread
-    boost::thread t(boost::bind(&boost::asio::io_service::run, &mIos));
+    // boost::thread t(boost::bind(&boost::asio::io_service::run, &mIos));
+    mIosThread.reset( new boost::thread(boost::bind(&boost::asio::io_service::run, &mIos)) );
+    // boost::thread* d = new boost::thread(boost::bind(&boost::asio::io_service::run, &mIos));
 
     // Start async read loop
     prepareAsyncRead();
@@ -104,14 +106,22 @@ void Service::start()
  * */
 void Service::stop()
 {
+    // Stop service and wait thread end
+    mIos.stop();
+    mIosThread->join();
+
+    // 
     boost::mutex::scoped_lock look(mMutex);
+
+    // Delete port if 
     if (mPort)
     {
         mPort->cancel();
         mPort->close();
         mPort.reset();
     }
-    mIos.stop();
+
+    // Reset service
     mIos.reset();
 
     // log
@@ -140,6 +150,23 @@ void Service::registerCommand(const Command& cmd)
     // Reset timer to transfert execution in thread
     mCommandTimer.expires_from_now( boost::posix_time::seconds(0) );
     mCommandTimer.async_wait( boost::bind(&Service::sendNextCommand, this) );
+}
+
+/* ============================================================================
+ *
+ * */
+Servo* Service::getServo(uint8_t id)
+{
+    for(auto& s : mServos)
+    {
+        if(s->getId() == id)
+        {
+            return s.get();
+        }
+    }
+    std::shared_ptr<Servo> servoPtr(new Servo(id, this));
+    mServos.push_back(servoPtr);
+    return servoPtr.get();
 }
 
 /* ============================================================================
@@ -347,23 +374,14 @@ void Service::parsePacket()
     LOG_TRACE << "    packet complete size(" << size << ")";
     
     // Use packet
-    std::vector<uint8_t> pbuffer(mParseBuffer.begin(),mParseBuffer.begin()+size); 
-
-    LOG_TRACE << "1= " << ByteVector2HexStr(pbuffer);
-
-    // Packet pack(pbuffer);
-    // processPacket(pack);
+    Packet pack(mParseBuffer.data(), size);
+    processPacket(pack);
 
     // Remove used data
-
-    LOG_TRACE << "2= " << ByteVector2HexStr(mParseBuffer);
-
     mParseBuffer.erase(mParseBuffer.begin(), mParseBuffer.begin()+size);
 
-    LOG_TRACE << "3= " << ByteVector2HexStr(mParseBuffer);
-
-    // // Try to parse an other packet
-    // parsePacket();
+    // Try to parse an other packet
+    parsePacket();
 }
 
 /* ============================================================================
@@ -371,15 +389,15 @@ void Service::parsePacket()
  * */
 void Service::processPacket(const Packet& pack)
 {
-    LOG_TRACE << "process packet(" << pack.toString() << ")";
+    LOG_TRACE << "process packet(" << pack << ")";
 
-    // switch(mCurrentCommand.getType())
-    // {
-    //     case Command::Type::none: break;
-    //     case Command::Type::ping: processPacket_Ping(pack); break;
-    //     case Command::Type::pull: processPacket_Pull(pack); break;
-    //     case Command::Type::push: processPacket_Push(pack); break;
-    // }
+    switch(mCurrentCommand.getType())
+    {
+        case Command::Type::none: break;
+        case Command::Type::ping: processPacket_Ping(pack); break;
+        case Command::Type::pull: processPacket_Pull(pack); break;
+        case Command::Type::push: processPacket_Push(pack); break;
+    }
 }
 
 /* ============================================================================
@@ -396,20 +414,20 @@ void Service::processPacket_Ping(const Packet& pack)
         }
         case Packet::Instruction::InsStatus:
         {
-            // // each packet received is a servo that give its ID
-            // uint8_t id = pack.getId();
-            // mPingResult << id;
-            
-            // #ifdef DEBUG_PLUS
-            // qDebug() << "      - Ping new id detected (" << id << ")";
-            // #endif
+            // each packet received is a servo that give its ID
+            uint8_t id = pack.getId();
+            mPingResult.push_back( id );
 
-            // emit newPingIdReceived(id);
-            // break;
+            // log
+            LOG_TRACE << "ping new id detected: (" << (int)id << ")";
+
+            // signal to app
+            newPingIdReceived(id);
+            break;
         }
         default:
         {
-            // qWarning("      - Unexpected message received in ping context %s", pack.toString().toStdString().c_str());
+            LOG_WARNING << "unexpected message received in ping context " << pack;
             break;
         }
     }

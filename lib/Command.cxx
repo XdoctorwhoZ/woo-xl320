@@ -7,12 +7,22 @@ using namespace woo::xl320;
 /* ============================================================================
  *
  * */
-Command::Command(Type type, uint8_t id, uint8_t addr, uint8_t size, const std::vector<uint8_t>& data)
+Command::Command(Type type, uint8_t id, uint8_t addr, uint8_t size)
     : mType(type)
     , mId(id)
     , mAddr(addr)
     , mSize(size)
-    , mData(data)
+{ }
+
+/* ============================================================================
+ *
+ * */
+Command::Command(Type type, uint8_t id, uint8_t addr, uint8_t size, uint8_t* data)
+    : mType(type)
+    , mId(id)
+    , mAddr(addr)
+    , mSize(size)
+    , mData(data, data+size)
 { }
 
 /* ============================================================================
@@ -21,13 +31,12 @@ Command::Command(Type type, uint8_t id, uint8_t addr, uint8_t size, const std::v
 std::vector<uint8_t> Command::toDataArray()
 {
     std::vector<uint8_t> buffer;
-    Packet pack(buffer);
 
     switch(mType)
     {
         case Type::ping:
         {
-            pack.build(Packet::Constant::BroadcastId, Packet::Instruction::InsPing, 0);
+            Packet::Build(buffer, Packet::Constant::BroadcastId, Packet::Instruction::InsPing, 0);
             break;
         }
     //     case Type::pull:

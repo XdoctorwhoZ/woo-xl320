@@ -8,12 +8,12 @@
 #include <queue>
 #include <vector>
 #include <thread>
+#include <memory>
 #include <sstream>
 
 // woo
 #include "Log.h"
-#include "Command.h"
-// #include "Servo.h"
+#include "Servo.h"
 
 // boost
 #include <boost/bind.hpp>
@@ -22,6 +22,7 @@
 #include <boost/asio/serial_port.hpp>
 #include <boost/system/error_code.hpp>
 #include <boost/system/system_error.hpp>
+#include <boost/signals2.hpp>
 
 // ---
 namespace woo { namespace xl320 {
@@ -90,14 +91,16 @@ private:
     //! List of ids reached by ping
     std::list<uint8_t> mPingResult;
 
-
     //! All servos connected to this service
-    // QList<QSharedPointer<Servo>> mServos;
+    std::list<std::shared_ptr<Servo>> mServos;
 
     //! Timer to control command timeout
     // QTimer mTimerOut;
 
 public:
+
+    //! 
+    boost::signals2::signal<void(uint8_t)> newPingIdReceived;
 
     //! Constructor
     Service(const char* dev = "/dev/ttyACM0", uint32_t baud = 115200);
@@ -118,11 +121,17 @@ public:
     //! Function to register a command in the queue
     void registerCommand(const Command& cmd);
 
+    //! Return the list of id from ping
+    std::list<uint8_t> getPingResult() const { return mPingResult; }
+
+    //! Get servo controller for servo id
+    Servo* getServo(uint8_t id);
+
+private:
+
     //! Take the next command in the tx queue and send it
     //! If a command is already running, a timer will call back this function later
     void sendNextCommand();
-
-private:
 
     //! Request async read on the port
     void prepareAsyncRead();
@@ -147,21 +156,9 @@ private:
 
 
 
-
-
-
     // Basic getters
     // bool getTestResult() const { return mResult.test; }
     // QList<int> getPingResult() const { return mResult.ping; }
-
-
-
-    //! Parse data from device com
-    // void parseData(const QByteArray& data);
-
-
-    // //! To send test request
-    // void sendTest();
 
 
 

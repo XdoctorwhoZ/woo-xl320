@@ -129,6 +129,12 @@ using namespace std;
 
 
 
+
+void slotNewId(uint8_t id)
+{
+    LOG_INFO << "SLOT New ID: " << (int)id << endl;
+}
+
 //! Main enter point
 //!
 int main(int argc, char *argv[])
@@ -139,37 +145,33 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    // Start qt core application
-    // QCoreApplication a(argc, argv);
-
-
-    // woo::arduino_xl320::Servo s;
-
-    // // Start test
-    // Test01 testObj;
-    // if( testObj.start(argv[1]) ) {
-    //     return 1;   
-    // }
-
     // boost::log::core::get()->set_filter
     // (
-    //     boost::log::trivial::severity >= boost::log::trivial::info
+        // boost::log::trivial::severity >= boost::log::trivial::trace
+        // boost::log::trivial::severity >= boost::log::trivial::debug
     // );
-
-    // BOOST_LOG_TRIVIAL(trace) << "A trace severity message";
-    // BOOST_LOG_TRIVIAL(debug) << "A debug severity message";
-    // BOOST_LOG_TRIVIAL(info) << "An informational severity message";
-    // BOOST_LOG_TRIVIAL(warning) << "A warning severity message";
-    // BOOST_LOG_TRIVIAL(error) << "An error severity message";
-    // BOOST_LOG_TRIVIAL(fatal) << "A fatal severity message";
 
     woo::xl320::Service ser(argv[1], 115200);
     ser.start();
 
+    ser.newPingIdReceived.connect(&slotNewId);
 
-    boost::this_thread::sleep_for(boost::chrono::milliseconds(1000));
+    boost::this_thread::sleep_for(boost::chrono::milliseconds(2000));
     ser.sendPing();
-    boost::this_thread::sleep_for(boost::chrono::milliseconds(100000));
+    boost::this_thread::sleep_for(boost::chrono::milliseconds(5000));
+
+    LOG_INFO << "Number of id detected: " << ser.getPingResult().size();
+    if(ser.getPingResult().size() < 0)
+    {
+        return 1;
+    }
+
+    woo::xl320::Servo* servo = ser.getServo(ser.getPingResult().front());
+
+    servo->pullAll();
+    boost::this_thread::sleep_for(boost::chrono::milliseconds(5000));
+    
+    LOG_INFO << servo;
 
     return 0;
 }

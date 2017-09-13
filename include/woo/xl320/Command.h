@@ -47,7 +47,13 @@ public:
            , uint8_t id = Packet::Constant::BroadcastId
            , uint8_t addr = 0
            , uint8_t size = 0
-           , const std::vector<uint8_t>& data = std::vector<uint8_t>());
+           );
+    Command(Type type
+           , uint8_t id
+           , uint8_t addr
+           , uint8_t size
+           , uint8_t* data
+           );
 
     // Basic getters
     Type        getType() const { return mType; }

@@ -70,17 +70,18 @@ public:
 
 private:
 
-    //! Working data buffer
-    std::vector<uint8_t>& mData;
+    //! Working data buffer, read only
+    const uint8_t* mData;
+    uint32_t mDataSize;
 
 public:
 
     //! Prepare packet manager with the following buffer
-    Packet(std::vector<uint8_t>& data) : mData(data) { }
+    Packet(const uint8_t* data = 0, uint32_t size = 0) : mData(data), mDataSize(size) { }
 
     //! Build a packet with the following data
-    void build(uint8_t id, Instruction instruction, int params_size, ...);
-    void build(uint8_t id, Instruction instruction, const std::vector<uint8_t>& params);
+    static void Build(std::vector<uint8_t>& data, uint8_t id, Instruction instruction, int params_size, ...);
+    static void Build(std::vector<uint8_t>& data, uint8_t id, Instruction instruction, const std::vector<uint8_t>& params);
 
     // Basic getters
     uint8_t     getId()             const { return mData[4]; }
@@ -94,9 +95,16 @@ public:
     //! Function to check packet structure
     // PacketState validate() const;
 
-    //! Return string representation of the packet
-    std::string toString() const;
 };
+
+//! ostream support for packet object
+inline std::ostream& operator<<(std::ostream& os, const Packet& obj)
+{
+    os  << "packet id(" << (int)obj.getId() 
+        << "), len(" << obj.getLength() 
+        << "), ins(" << (int)obj.getInstruction() << ")";
+    return os;
+}
 
 } // xl320
 } // woo

@@ -7,67 +7,67 @@ using namespace woo::xl320;
 /* ============================================================================
  *
  * */
-void Packet::build(uint8_t id, Instruction instruction, int params_size, ...)
+void Packet::Build(std::vector<uint8_t>& data, uint8_t id, Instruction instruction, int params_size, ...)
 {
     // Resize buffer to be able to contains the all message
     uint16_t bufferSize = ComputeBufferSize(params_size);
-    mData.resize(bufferSize);
+    data.resize(bufferSize);
 
     // Packet length after header
     uint16_t packetLength = 1 + 2 + params_size;
 
-    mData[0] = Constant::Header0;
-    mData[1] = Constant::Header1;
-    mData[2] = Constant::Header2;
-    mData[3] = Constant::Reserve;
-    mData[4] = id;
-    mData[5] = WordLoByte(packetLength);
-    mData[6] = WordHiByte(packetLength);
-    mData[7] = (uint8_t)instruction;
+    data[0] = Constant::Header0;
+    data[1] = Constant::Header1;
+    data[2] = Constant::Header2;
+    data[3] = Constant::Reserve;
+    data[4] = id;
+    data[5] = WordLoByte(packetLength);
+    data[6] = WordHiByte(packetLength);
+    data[7] = (uint8_t)instruction;
 
     va_list args;
     va_start(args, params_size); 
     for(int i=0 ; i<params_size ; i++)
     {
         uint8_t arg = va_arg(args, int);
-        mData[8+i] = arg;
+        data[8+i] = arg;
     }
     va_end(args);
 
-    uint16_t crc = UpdateCRC(0, (uint8_t*)mData.data(), bufferSize-2);
-    mData[8+params_size]=WordLoByte(crc);
-    mData[9+params_size]=WordHiByte(crc);
+    uint16_t crc = UpdateCRC(0, (uint8_t*)data.data(), bufferSize-2);
+    data[8+params_size]=WordLoByte(crc);
+    data[9+params_size]=WordHiByte(crc);
 }
 
 /* ============================================================================
  *
  * */
-void Packet::build(uint8_t id, Instruction instruction, const std::vector<uint8_t>& params)
+void Packet::Build(std::vector<uint8_t>& data, uint8_t id, Instruction instruction, const std::vector<uint8_t>& params)
 {
     // Resize buffer to be able to contains the all message
     uint16_t bufferSize = ComputeBufferSize(params.size());
-    mData.resize(bufferSize);
+    data.resize(bufferSize);
 
     // Packet length after header
     uint16_t packetLength = 1 + 2 + params.size();
 
-    mData[0] = Constant::Header0;
-    mData[1] = Constant::Header1;
-    mData[2] = Constant::Header2;
-    mData[3] = Constant::Reserve;
-    mData[4] = id;
-    mData[5] = WordLoByte(packetLength);
-    mData[6] = WordHiByte(packetLength);
-    mData[7] = (uint8_t)instruction;
+    data[0] = Constant::Header0;
+    data[1] = Constant::Header1;
+    data[2] = Constant::Header2;
+    data[3] = Constant::Reserve;
+    data[4] = id;
+    data[5] = WordLoByte(packetLength);
+    data[6] = WordHiByte(packetLength);
+    data[7] = (uint8_t)instruction;
 
     for(int i=0 ; i<params.size() ; i++)
     {
-        mData[8+i] = params[i];
+        data[8+i] = params[i];
     }
     
-    uint16_t crc = UpdateCRC(0, (uint8_t*)mData.data(), bufferSize-2);
-    mData[8+params.size()]=WordLoByte(crc);
-    mData[9+params.size()]=WordHiByte(crc);
+    uint16_t crc = UpdateCRC(0, (uint8_t*)data.data(), bufferSize-2);
+    data[8+params.size()]=WordLoByte(crc);
+    data[9+params.size()]=WordHiByte(crc);
 }
 
 /* ============================================================================
@@ -85,20 +85,6 @@ void Packet::build(uint8_t id, Instruction instruction, const std::vector<uint8_
 //     // OK
 //     return PsValid;
 // }
-
-/* ============================================================================
- *
- * */
-std::string Packet::toString() const
-{
-//     return QString("id(%1),len(%2),ins(%3),params(%4),valid(%5)")
-//         .arg(getId())
-//         .arg(getLength())
-//         .arg(getInstruction())
-//         .arg(getParameterCount())
-//         .arg(validate())
-//         ;
-}
 
 /* ============================================================================
  *
