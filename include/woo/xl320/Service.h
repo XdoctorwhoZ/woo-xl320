@@ -97,10 +97,18 @@ private:
     //! Timer to control command timeout
     // QTimer mTimerOut;
 
+
 public:
 
-    //! 
+    // === SIGNALS ===
+
+    //! Emitted when the running command has received an answers or timeout
+    boost::signals2::signal<void(void)> commandEnded;
+
+    //! Emitted when a new servo id is detected next to a ping
     boost::signals2::signal<void(uint8_t)> newPingIdReceived;
+
+    // === SIGNALS ===
 
     //! Constructor
     Service(const char* dev = "/dev/ttyACM0", uint32_t baud = 115200);
@@ -155,19 +163,9 @@ private:
 
 
 
-
-    // Basic getters
-    // bool getTestResult() const { return mResult.test; }
-    // QList<int> getPingResult() const { return mResult.ping; }
-
-
-
     //! To send data through com device
     // void commandTransmissionRequested(const QByteArray& data);
 
-    // //! Emitted when the running command has received an answers or timeout
-    // //!
-    // void commandFinish();
 
     // //! Emitted when the result of the test is ready to be read
     // //!

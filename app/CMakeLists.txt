@@ -7,12 +7,16 @@ ADD_EXECUTABLE(
 
 # ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
 
-TARGET_LINK_LIBRARIES( test-01 LINK_PUBLIC ${Boost_LIBRARIES} -pthread)
+set(CMAKE_BUILD_TYPE Debug)
 
-TARGET_LINK_LIBRARIES(
-    test-01
-    woo-xl320
-    )
+TARGET_LINK_LIBRARIES( test-01 LINK_PUBLIC ${Boost_LIBRARIES} -pthread
+woo-xl320
+    
+	)
+
+# TARGET_LINK_LIBRARIES(
+#     test-01
+#     )
 
 
 

@@ -35,6 +35,7 @@ Service::Service(const char* dev, uint32_t baud)
     , mCommandInProcess(false)
     , mCommandTimer(mIos)
     , mCommandTimeout(mIos)
+    // , mIdleWork(mIos)
 {
     mParseBuffer.reserve(ReadBufferMaxSize);
 }
@@ -88,14 +89,17 @@ void Service::start()
 
     // You need to use boost::asio::io_service::work.
     // Think of it as a dummy work item, so io_service::run never runs out of work, and thus doesn't return immediately.
-    auto work = boost::asio::io_service::work(mIos);
+    // auto wk = 
+    boost::asio::io_service::work ww(mIos);
     // Start ios run thread
-    // boost::thread t(boost::bind(&boost::asio::io_service::run, &mIos));
+    
     mIosThread.reset( new boost::thread(boost::bind(&boost::asio::io_service::run, &mIos)) );
-    // boost::thread* d = new boost::thread(boost::bind(&boost::asio::io_service::run, &mIos));
+    // mIos.run();
+
 
     // Start async read loop
     prepareAsyncRead();
+
 
     // log
     LOG_INFO << "started";
