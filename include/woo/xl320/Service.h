@@ -7,25 +7,41 @@
 #include <deque>
 #include <queue>
 #include <vector>
+#include <mutex>
 #include <thread>
 #include <memory>
 #include <sstream>
 
 // woo
-#include "Log.h"
 #include "Servo.h"
 
 // boost
 #include <boost/bind.hpp>
-#include <boost/thread.hpp>
+// #include <boost/thread.hpp>
+#include <boost/signals2.hpp>
 #include <boost/asio.hpp>
 #include <boost/asio/serial_port.hpp>
 #include <boost/system/error_code.hpp>
 #include <boost/system/system_error.hpp>
-#include <boost/signals2.hpp>
+#include <boost/log/expressions.hpp>
+#include <boost/log/sources/record_ostream.hpp>
+#include <boost/log/sources/severity_channel_logger.hpp>
+#include <boost/log/sinks/sync_frontend.hpp>
+#include <boost/log/sinks/text_ostream_backend.hpp>
 
 // ---
 namespace woo { namespace xl320 {
+
+//!
+enum LogLevel
+{
+    info,
+    warning,
+    error,
+};
+
+//!
+typedef boost::log::sources::severity_channel_logger_mt<LogLevel, std::string> Logger;
 
 //! Main class of xl320 servos
 //! Control reception and transmission of data
@@ -43,19 +59,25 @@ private:
     // helpers
     typedef boost::asio::io_service BioService;
     typedef boost::asio::deadline_timer BdTimer;
-    typedef boost::shared_ptr<boost::thread> ThreadPtr;
+    typedef boost::shared_ptr<std::thread> ThreadPtr;
     typedef boost::shared_ptr<boost::asio::serial_port> SerialPortPtr;
+
+    //! Timeout values defintion in ms
+    static constexpr int PingTimeout = 5000;
+    static constexpr int DefaultTimeout = 5000;
 
     // Configurable options for the serial device
     std::string mSerialDevice;
     uint32_t    mSerialBaudrate;
+    
+    //!
+    Logger mLog;
     
     //! Boost asio service object, it is required by the boost serial port
     BioService mIos;
 
     //! Thread in which mIos will run
     ThreadPtr mIosThread;
-
 
     //! Serial port interface
     SerialPortPtr mPort;
@@ -69,8 +91,7 @@ private:
 
     //! mIos will run on a different thread
     //! This mutex will prevent race condition on data
-    boost::mutex mMutex;
-
+    std::mutex mMutex;
 
     //! Running command indicator
     //! pass true when command is sent
@@ -87,16 +108,11 @@ private:
     //! Commands that must be send
     std::queue<Command> mCommandQueue;
 
-
     //! List of ids reached by ping
     std::list<uint8_t> mPingResult;
 
     //! All servos connected to this service
     std::list<std::shared_ptr<Servo>> mServos;
-
-    //! Timer to control command timeout
-    // QTimer mTimerOut;
-
 
 public:
 
@@ -115,6 +131,10 @@ public:
 
     //! Destructor
     ~Service();
+
+    // Basic setters
+    void setSerialDevice(const std::string& dev) { mSerialDevice = dev; }
+    void setSerialBaudrate(uint32_t baud) { mSerialBaudrate = baud; }
 
     //! Before using this object, it needs to be started to create serial connection
     //! and start control thread
@@ -158,18 +178,6 @@ private:
 
     //! End the command process
     void endCommand();
-
-
-
-
-
-    //! To send data through com device
-    // void commandTransmissionRequested(const QByteArray& data);
-
-
-    // //! Emitted when the result of the test is ready to be read
-    // //!
-    // void testResultReady(bool result);
 
 };
 

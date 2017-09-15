@@ -1,8 +1,17 @@
 // woo
 #include <woo/xl320/Service.h>
 
+// std
+#include <fstream>
+
 // ---
 using namespace woo::xl320;
+namespace logging = boost::log;
+namespace sinks = boost::log::sinks;
+namespace expr = boost::log::expressions;
+
+// log config
+BOOST_LOG_ATTRIBUTE_KEYWORD(channel, "Channel", std::string)
 
 /* ============================================================================
  *
@@ -29,15 +38,19 @@ std::string Service::ByteVector2HexStr(const std::vector<uint8_t>& vec, uint32_t
  *
  * */
 Service::Service(const char* dev, uint32_t baud)
-    : mSerialDevice(dev)
+    : mLog(boost::log::keywords::channel = "woo::xl320")
+    , mSerialDevice(dev)
     , mSerialBaudrate(baud)
     , mReadBuffer(ReadBufferMaxSize)
     , mCommandInProcess(false)
     , mCommandTimer(mIos)
     , mCommandTimeout(mIos)
-    // , mIdleWork(mIos)
 {
     mParseBuffer.reserve(ReadBufferMaxSize);
+
+
+
+
 }
 
 /* ============================================================================
@@ -56,25 +69,25 @@ void Service::start()
     boost::system::error_code ec;
 
     // log
-    LOG_INFO << "start...";
+    BOOST_LOG_SEV(mLog, info) << "start...";
 
     // Check if the port is already opened
     if (mPort)
     {
-        LOG_WARNING << "port is already opened";
+        BOOST_LOG_SEV(mLog, info) << "port is already opened";
         return;
     }
 
     // debug
-    LOG_DEBUG << "device   (" << mSerialDevice   << ")";
-    LOG_DEBUG << "baudrate (" << mSerialBaudrate << ")";
+    BOOST_LOG_SEV(mLog, info) << "device   (" << mSerialDevice   << ")";
+    BOOST_LOG_SEV(mLog, info) << "baudrate (" << mSerialBaudrate << ")";
 
     // Create serial port
     mPort = SerialPortPtr(new boost::asio::serial_port(mIos));
     mPort->open(mSerialDevice, ec);
     if (ec)
     {
-        LOG_ERROR
+        BOOST_LOG_SEV(mLog, info)
             << "port openning failed... dev("
             << mSerialDevice << "), err(" << ec.message().c_str() << ")";
         return;
@@ -87,22 +100,15 @@ void Service::start()
     mPort->set_option(boost::asio::serial_port_base::parity(boost::asio::serial_port_base::parity::none));
     mPort->set_option(boost::asio::serial_port_base::flow_control(boost::asio::serial_port_base::flow_control::none));
 
-    // You need to use boost::asio::io_service::work.
-    // Think of it as a dummy work item, so io_service::run never runs out of work, and thus doesn't return immediately.
-    // auto wk = 
-    boost::asio::io_service::work ww(mIos);
-    // Start ios run thread
-    
-    mIosThread.reset( new boost::thread(boost::bind(&boost::asio::io_service::run, &mIos)) );
-    // mIos.run();
-
+    // Start ios run thread    
+    boost::asio::io_service::work idleWork(mIos);
+    mIosThread.reset( new std::thread([&]{ mIos.run(); }) );
 
     // Start async read loop
     prepareAsyncRead();
 
-
     // log
-    LOG_INFO << "started";
+    BOOST_LOG_SEV(mLog, info) << "started";
 }
 
 /* ============================================================================
@@ -115,7 +121,7 @@ void Service::stop()
     mIosThread->join();
 
     // 
-    boost::mutex::scoped_lock look(mMutex);
+    std::lock_guard<std::mutex> lock(mMutex);
 
     // Delete port if 
     if (mPort)
@@ -129,7 +135,7 @@ void Service::stop()
     mIos.reset();
 
     // log
-    LOG_INFO << "stop";
+    BOOST_LOG_SEV(mLog, info) << "stop";
 }
 
 /* ============================================================================
@@ -137,7 +143,7 @@ void Service::stop()
  * */
 void Service::sendPing()
 {
-    LOG_INFO << "ping";
+    BOOST_LOG_SEV(mLog, info) << "ping";
     registerCommand( Command(Command::Type::ping) );
 }
 
@@ -146,7 +152,7 @@ void Service::sendPing()
  * */
 void Service::registerCommand(const Command& cmd)
 {
-    boost::mutex::scoped_lock look(mMutex);
+    std::lock_guard<std::mutex> lock(mMutex);
  
     // Append command to queue
     mCommandQueue.push(cmd);
@@ -178,27 +184,27 @@ Servo* Service::getServo(uint8_t id)
  * */
 void Service::sendNextCommand()
 {
-    boost::mutex::scoped_lock look(mMutex);
+    std::lock_guard<std::mutex> lock(mMutex);
 
-    LOG_TRACE << "try to send next command";
+    BOOST_LOG_SEV(mLog, info) << "try to send next command";
 
     // No more command to send
     if( mCommandQueue.empty() )
     {
-        LOG_TRACE << "command queue is empty";
+        BOOST_LOG_SEV(mLog, info) << "command queue is empty";
         return;
     }
 
     // A command is already running
     if( mCommandInProcess )
     {
-        LOG_TRACE << "a command is already running, wait...";
+        BOOST_LOG_SEV(mLog, info) << "a command is already running, wait...";
         return;
     }
 
     // Command is now running
     mCommandInProcess = true;
-    // int timeout = DefaultTimeout;
+    int timeout = DefaultTimeout;
 
     // Take next comment
     mCurrentCommand = mCommandQueue.front();
@@ -207,7 +213,7 @@ void Service::sendNextCommand()
     // Reset ping result if it is an other ping command
     if(mCurrentCommand.getType() == Command::Type::ping)
     {
-        // timeout = PingTimeout;
+        timeout = PingTimeout;
         mPingResult.clear();
     }
 
@@ -216,11 +222,11 @@ void Service::sendNextCommand()
     mPort->write_some( boost::asio::buffer(data, data.size()) );
     
     // log
-    LOG_TRACE << "command sent: " << ByteVector2HexStr(data);
+    BOOST_LOG_SEV(mLog, info) << "command sent: " << ByteVector2HexStr(data);
 
-
-    // // Start timeout timer
-    // mTimerOut.start(timeout);
+    // Start timeout timer
+    mCommandTimeout.expires_from_now( boost::posix_time::milliseconds(timeout) );
+    mCommandTimeout.async_wait( boost::bind(&Service::endCommand, this) );
 }
 
 /* ============================================================================
@@ -229,12 +235,12 @@ void Service::sendNextCommand()
 void Service::prepareAsyncRead()
 {
     // log
-    LOG_TRACE << "prepare async read";
+    BOOST_LOG_SEV(mLog, info) << "prepare async read";
 
     // Check that port is ready
     if (mPort.get() == NULL || !mPort->is_open())
     {
-        LOG_WARNING << "port not ready";
+        BOOST_LOG_SEV(mLog, info) << "port not ready";
     }
 
     // Request async read
@@ -255,28 +261,28 @@ void Service::prepareAsyncRead()
 void Service::readReceivedData(const boost::system::error_code& ec, size_t bytes_transferred)
 {
     // lock data
-    boost::mutex::scoped_lock look(mMutex);
+    std::lock_guard<std::mutex> lock(mMutex);
 
     // log
-    LOG_TRACE << "read received data";
+    BOOST_LOG_SEV(mLog, info) << "read received data";
 
     // Check that port is ready
     if (mPort.get() == NULL || !mPort->is_open())
     {
-        LOG_WARNING << "    port not ready";
+        BOOST_LOG_SEV(mLog, info) << "    port not ready";
         return;
     }
 
     // Check if there are some errors
     if (ec)
     {
-        LOG_WARNING << "    async read error(" << ec.message().c_str() << ")";
+        BOOST_LOG_SEV(mLog, info) << "    async read error(" << ec.message().c_str() << ")";
         prepareAsyncRead();
         return;
     }
 
     // Debug ultra
-    LOG_TRACE << "    data received: " << ByteVector2HexStr(mReadBuffer, bytes_transferred);
+    BOOST_LOG_SEV(mLog, info) << "    data received: " << ByteVector2HexStr(mReadBuffer, bytes_transferred);
 
     // Store data for later parse
     mParseBuffer.insert(
@@ -297,12 +303,12 @@ void Service::readReceivedData(const boost::system::error_code& ec, size_t bytes
 void Service::parsePacket()
 {
     // log
-    LOG_TRACE << "parse packet from buffer " << ByteVector2HexStr(mParseBuffer);
+    BOOST_LOG_SEV(mLog, info) << "parse packet from buffer " << ByteVector2HexStr(mParseBuffer);
 
     // Check if the buffer is not empty
     if (mParseBuffer.empty())
     {
-        LOG_TRACE << "    parse buffer is empty";
+        BOOST_LOG_SEV(mLog, info) << "    parse buffer is empty";
         return;
     }
 
@@ -315,14 +321,14 @@ void Service::parsePacket()
     {
         if( (size+plus) <= mParseBuffer.size() )
         {
-            LOG_TRACE << "    (" << size << "," << index << ",+" << plus << ")";
+            BOOST_LOG_SEV(mLog, info) << "    (" << size << "," << index << ",+" << plus << ")";
             size += plus;
             index = size-1;
             return true;
         }
         else
         {
-            LOG_TRACE << "    no more data to read need(" << size+plus << ") left(" << mParseBuffer.size() << ")";
+            BOOST_LOG_SEV(mLog, info) << "    no more data to read need(" << size+plus << ") left(" << mParseBuffer.size() << ")";
             return false;
         }
     };
@@ -331,7 +337,7 @@ void Service::parsePacket()
     // index = 0
     if( (uint8_t)mParseBuffer[index] != (uint8_t)0xFF )
     {
-        LOG_TRACE << "    Packet byte 0 must be 0xFF";
+        BOOST_LOG_SEV(mLog, info) << "    Packet byte 0 must be 0xFF";
         mParseBuffer.erase(mParseBuffer.begin(), mParseBuffer.begin()+size);
         return;
     }
@@ -342,7 +348,7 @@ void Service::parsePacket()
     // index = 1
     if( (uint8_t)mParseBuffer[index] != (uint8_t)0xFF )
     {
-        LOG_TRACE << "    Packet byte 1 must be 0xFF";
+        BOOST_LOG_SEV(mLog, info) << "    Packet byte 1 must be 0xFF";
         mParseBuffer.erase(mParseBuffer.begin(), mParseBuffer.begin()+size);
         return;
     }
@@ -353,7 +359,7 @@ void Service::parsePacket()
     // index = 2
     if( (uint8_t)mParseBuffer[index] != (uint8_t)0xFD )
     {
-        LOG_TRACE << "    Packet byte 2 must be 0xFD";
+        BOOST_LOG_SEV(mLog, info) << "    Packet byte 2 must be 0xFD";
         mParseBuffer.erase(mParseBuffer.begin(), mParseBuffer.begin()+size);
         return;
     }
@@ -371,11 +377,11 @@ void Service::parsePacket()
     uint8_t lenH = mParseBuffer[index]; // 6
     int len = Packet::MakeWord(lenL, lenH);
 
-    LOG_TRACE << "    packet len(" << len << ")";
+    BOOST_LOG_SEV(mLog, info) << "    packet len(" << len << ")";
     
     if(!upSize(len)) { return ; }
 
-    LOG_TRACE << "    packet complete size(" << size << ")";
+    BOOST_LOG_SEV(mLog, info) << "    packet complete size(" << size << ")";
     
     // Use packet
     Packet pack(mParseBuffer.data(), size);
@@ -393,7 +399,7 @@ void Service::parsePacket()
  * */
 void Service::processPacket(const Packet& pack)
 {
-    LOG_TRACE << "process packet(" << pack << ")";
+    BOOST_LOG_SEV(mLog, info) << "process packet(" << pack << ")";
 
     switch(mCurrentCommand.getType())
     {
@@ -413,7 +419,7 @@ void Service::processPacket_Ping(const Packet& pack)
     {
         case Packet::Instruction::InsPing:
         {
-            LOG_TRACE << "ping echo";
+            BOOST_LOG_SEV(mLog, info) << "ping echo";
             break;
         }
         case Packet::Instruction::InsStatus:
@@ -423,7 +429,7 @@ void Service::processPacket_Ping(const Packet& pack)
             mPingResult.push_back( id );
 
             // log
-            LOG_TRACE << "ping new id detected: (" << (int)id << ")";
+            BOOST_LOG_SEV(mLog, info) << "ping new id detected: (" << (int)id << ")";
 
             // signal to app
             newPingIdReceived(id);
@@ -431,7 +437,7 @@ void Service::processPacket_Ping(const Packet& pack)
         }
         default:
         {
-            LOG_WARNING << "unexpected message received in ping context " << pack;
+            BOOST_LOG_SEV(mLog, info) << "unexpected message received in ping context " << pack;
             break;
         }
     }
@@ -442,29 +448,32 @@ void Service::processPacket_Ping(const Packet& pack)
  * */
 void Service::processPacket_Pull(const Packet& pack)
 {
-    // switch(pack.getInstruction())
-    // {
-    //     case Packet::Instruction::InsRead:
-    //     {
-    //         #ifdef DEBUG_PLUS
-    //         qDebug() << "      - Read echo";
-    //         #endif
-    //         break;
-    //     }
-    //     case Packet::Instruction::InsStatus:
-    //     {
-    //         uint8_t id = pack.getId();
-    //         Servo* servo = getServo(id);
-    //         servo->update((Servo::RegisterIndex)mCurrentCommand.getAddr(), pack.getReadData());
-    //         endCommand();
-    //         break;
-    //     }
-    //     default:
-    //     {
-    //         qWarning("      - Unexpected message received in ping context %s", pack.toString().toStdString().c_str());
-    //         break;
-    //     }
-    // }
+    switch(pack.getInstruction())
+    {
+        case Packet::Instruction::InsRead:
+        {
+            BOOST_LOG_SEV(mLog, info) << "    - pull command echo";
+            break;
+        }
+        case Packet::Instruction::InsStatus:
+        {
+            uint8_t id = pack.getId();
+            BOOST_LOG_SEV(mLog, info) << "    - pull answer for servo " << (int)id;
+
+            Servo* servo = getServo(id);
+            servo->update( (Servo::RegisterIndex)mCurrentCommand.getAddr()
+                         , pack.beginReadData()
+                         , pack.endReadData()
+                );
+            endCommand();
+            break;
+        }
+        default:
+        {
+            BOOST_LOG_SEV(mLog, warning) << "    - unexpected message received in pull context " << pack;
+            break;
+        }
+    }
 }
 
 /* ============================================================================
@@ -480,12 +489,13 @@ void Service::processPacket_Push(const Packet& pack)
  * */
 void Service::endCommand()
 {
-    // mIsRunning = false;
+    mCommandInProcess = false;
     // mTimerOut.stop();
 
-    // // Signal to listeners
-    // emit commandEnded();
+    // Signal to listeners
+    commandEnded();
 
-    // // Try to send next command
-    // QTimer::singleShot(0, this, SLOT(sendNextCommand()) );
+    // Try to send next command
+    mCommandTimer.expires_from_now( boost::posix_time::seconds(0) );
+    mCommandTimer.async_wait( boost::bind(&Service::sendNextCommand, this) );
 }

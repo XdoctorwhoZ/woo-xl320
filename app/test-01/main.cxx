@@ -1,23 +1,73 @@
-// Qt
-// #include <QCoreApplication>
-
+// woo
 #include <woo/xl320/Service.h>
 
 // std
 #include <iostream>
 
+// boost
+#include <boost/log/core.hpp>
+#include <boost/log/trivial.hpp>
+#include <boost/log/expressions.hpp>
+
 // ---
 using namespace std;
 
+// 
+int state = 0;
+woo::xl320::Service xlService;
+boost::asio::io_service asioService;
+boost::asio::deadline_timer actionTimer(asioService);
 
-woo::xl320::Service ser;
-boost::asio::io_service iosss;
+woo::xl320::Servo* servo;
 
-boost::asio::deadline_timer ttt(iosss);
+// log config
+BOOST_LOG_ATTRIBUTE_KEYWORD(channel, "Channel", std::string)
 
+//!
+void testMachineState()
+{
+    switch(state)
+    {
+        case 0:
+        {
+            BOOST_LOG_TRIVIAL(info) << "-- State 0";
+            actionTimer.expires_from_now( boost::posix_time::seconds(2) );
+            actionTimer.async_wait( boost::bind(&woo::xl320::Service::sendPing, &xlService) );
+            break;
+        }
+        case 1:
+        {
+            BOOST_LOG_TRIVIAL(info) << "-- State 1";
+            BOOST_LOG_TRIVIAL(info) << "   + Id detected: " << xlService.getPingResult().size();
+            if(xlService.getPingResult().size() > 0)
+            {
+                servo = xlService.getServo(xlService.getPingResult().front());
+                servo->pullAll();
+            }
+            else
+            {
+                BOOST_LOG_TRIVIAL(error) << "-- Test end, no servo available";    
+            }
+            break;   
+        }
+    }
+}
+
+//
+void onCommandFinish()
+{
+    BOOST_LOG_TRIVIAL(info) << "-- ok";
+
+    state++;
+
+    actionTimer.expires_from_now( boost::posix_time::seconds(0) );
+    actionTimer.async_wait( boost::bind(&testMachineState) );
+}
+
+//
 void slotNewId(uint8_t id)
 {
-    LOG_INFO << "SLOT New ID: " << (int)id ;
+    BOOST_LOG_TRIVIAL(info) << "    + New id detected: " << (int)id;
 }
 
 //! Main enter point
@@ -25,44 +75,55 @@ void slotNewId(uint8_t id)
 int main(int argc, char *argv[])
 {
     // Check if device is provided
-    // if( argc < 2 ) {
-    //     cerr << "usage: test-01 /dev/tty" << endl;
-    //     return 1;
-    // }
+    if( argc < 2 ) {
+        cerr << "usage: test-01 /dev/tty" << endl;
+        return 1;
+    }
 
-    boost::log::core::get()->set_filter
-    (
-        // boost::log::trivial::severity >= boost::log::trivial::trace
-        // boost::log::trivial::severity >= boost::log::trivial::debug
-        boost::log::trivial::severity >= boost::log::trivial::info
-    );
+    // Prepare xl service
+    xlService.setSerialDevice(argv[1]);
+    xlService.setSerialBaudrate(115200);
+    xlService.start();
 
-    ser.start();
+    //
+    xlService.commandEnded.connect(&onCommandFinish);
+    xlService.newPingIdReceived.connect(&slotNewId);
 
-    ser.newPingIdReceived.connect(&slotNewId);
-
-
-    ttt.expires_from_now( boost::posix_time::seconds(2) );
-    ttt.async_wait( boost::bind(&woo::xl320::Service::sendPing, &ser) );
+    // Start actions
+    actionTimer.expires_from_now( boost::posix_time::seconds(0) );
+    actionTimer.async_wait( boost::bind(&testMachineState) );
 
 
 
-    // LOG_INFO << "Number of id detected: " << ser.getPingResult().size();
-    // if(ser.getPingResult().size() < 0)
-    // {
-    //     return 1;
-    // }
-
-    boost::asio::io_service::work ww(iosss);
-    iosss.run();
-
-    // woo::xl320::Servo* servo = ser.getServo(ser.getPingResult().front());
-
-    // servo->pullAll();
     // boost::this_thread::sleep_for(boost::chrono::milliseconds(5000));
     
     // LOG_INFO << servo;
 
+
+    boost::asio::io_service::work idleWork(asioService);
+    asioService.run();
+
     return 0;
 }
 
+/*
+    // // Prepare 
+    // typedef boost::log::sinks::synchronous_sink< 
+    //     boost::log::sinks::text_ostream_backend > text_sink;
+    // boost::shared_ptr< text_sink > sink = boost::make_shared< text_sink >();
+
+    // sink->locked_backend()->add_stream(
+    //     boost::make_shared< std::ofstream >("full.log"));
+    // sink->locked_backend()->add_stream(
+    //     boost::shared_ptr<std::ostream>(&std::cout, [](std::ostream* d){} ));
+
+
+    // sink->set_formatter
+    // (
+    //     expr::stream << "___"  << expr::smessage
+    // );
+
+    // sink->set_filter(channel == "woo::xl320");
+
+    // logging::core::get()->add_sink(sink);
+*/

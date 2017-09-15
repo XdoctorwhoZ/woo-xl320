@@ -136,6 +136,7 @@ public:
     void pull(RegisterIndex index) { pull(index, index); }
     void pull(RegisterIndex beg_index, RegisterIndex end_index);
     void pullAll() { pull(ModelNumber, Punch); }
+    // void pullAll() { pull(ModelNumber, LED); }
 
     //! Send local modification to remote servo
     void push();
@@ -147,10 +148,21 @@ private:
 
     //! To set a value in working registers
     void set(RegisterIndex index, uint16_t value, ByteArray& regTable);
-    void set(RegisterIndex index, const ByteArray& value, ByteArray& regTable);
+
+    //!
+    template<class IT>
+    void set(RegisterIndex index, IT beg, IT end, ByteArray& regTable)
+    {
+        const RegisterEntry& entry = RegisterMap[index];
+        std::copy(beg, end, regTable.begin()+entry.address);
+    }
 
     //! Update locals and remotes values
-    void update(RegisterIndex index, const ByteArray& value);
+    template<class IT>
+    void update(RegisterIndex index, IT beg, IT end)
+    {
+        set(index, beg, end, mRegisterWorkingData);
+    }
 
 };
 

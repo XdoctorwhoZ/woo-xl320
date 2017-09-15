@@ -239,23 +239,3 @@ void Servo::set(RegisterIndex index, uint16_t value, ByteArray& regTable)
         }
     }
 }
-
-/* ============================================================================
- *
- * */
-void Servo::set(RegisterIndex index, const ByteArray& values, ByteArray& regTable)
-{
-    const RegisterEntry& entry = RegisterMap[index];
-    for(int i=0 ; i<values.size() ; i++)
-    {
-        regTable[entry.address + i] = values[i];
-    }
-}
-
-/* ============================================================================
- *
- * */
-void Servo::update(RegisterIndex index, const ByteArray& values)
-{
-    set(index, values, mRegisterWorkingData);
-}

@@ -39,16 +39,16 @@ std::vector<uint8_t> Command::toDataArray()
             Packet::Build(buffer, Packet::Constant::BroadcastId, Packet::Instruction::InsPing, 0);
             break;
         }
-    //     case Type::pull:
-    //     {
-    //         std::vector<uint8_t> params;
-    //         params += Packet::WordLoByte(mAddr);
-    //         params += Packet::WordHiByte(mAddr);
-    //         params += Packet::WordLoByte(mSize);
-    //         params += Packet::WordHiByte(mSize);
-    //         pack.build(mId, Packet::Instruction::InsRead, params);
-    //         break;
-    //     }
+        case Type::pull:
+        {
+            std::vector<uint8_t> params;
+            params.push_back(Packet::WordLoByte(mAddr));
+            params.push_back(Packet::WordHiByte(mAddr));
+            params.push_back(Packet::WordLoByte(mSize));
+            params.push_back(Packet::WordHiByte(mSize));
+            Packet::Build(buffer, mId, Packet::Instruction::InsRead, params);
+            break;
+        }
     //     case Type::push:
     //     {
 
