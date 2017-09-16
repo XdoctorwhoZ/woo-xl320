@@ -35,9 +35,10 @@ namespace woo { namespace xl320 {
 //!
 enum LogLevel
 {
-    info,
-    warning,
-    error,
+    debug = 0,
+    info = 1,
+    warning = 2,
+    error = 3,
 };
 
 //!

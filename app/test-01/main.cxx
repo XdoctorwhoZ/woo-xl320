@@ -11,6 +11,9 @@
 
 // ---
 using namespace std;
+namespace logging = boost::log;
+namespace sinks = boost::log::sinks;
+namespace expr = boost::log::expressions;
 
 // 
 int state = 0;
@@ -22,6 +25,7 @@ woo::xl320::Servo* servo;
 
 // log config
 BOOST_LOG_ATTRIBUTE_KEYWORD(channel, "Channel", std::string)
+BOOST_LOG_ATTRIBUTE_KEYWORD(severity, "Severity", woo::xl320::LogLevel)
 
 //!
 void testMachineState()
@@ -39,15 +43,16 @@ void testMachineState()
         {
             BOOST_LOG_TRIVIAL(info) << "-- State 1";
             BOOST_LOG_TRIVIAL(info) << "   + Id detected: " << xlService.getPingResult().size();
-            if(xlService.getPingResult().size() > 0)
-            {
-                servo = xlService.getServo(xlService.getPingResult().front());
+            // if(xlService.getPingResult().size() > 0)
+            // {
+                // servo = xlService.getServo(xlService.getPingResult().front());
+                servo = xlService.getServo(1);
                 servo->pullAll();
-            }
-            else
-            {
-                BOOST_LOG_TRIVIAL(error) << "-- Test end, no servo available";    
-            }
+            // }
+            // else
+            // {
+            //     BOOST_LOG_TRIVIAL(error) << "-- Test end, no servo available";    
+            // }
             break;   
         }
     }
@@ -70,6 +75,30 @@ void slotNewId(uint8_t id)
     BOOST_LOG_TRIVIAL(info) << "    + New id detected: " << (int)id;
 }
 
+void initLogs()
+{
+    // // Prepare 
+    // typedef boost::log::sinks::synchronous_sink< 
+    //     boost::log::sinks::text_ostream_backend > text_sink;
+    // boost::shared_ptr< text_sink > sink = boost::make_shared< text_sink >();
+
+    // // sink->locked_backend()->add_stream(
+    // //     boost::make_shared< std::ofstream >("full.log"));
+    // sink->locked_backend()->add_stream(
+    //     boost::shared_ptr<std::ostream>(&std::cout, [](std::ostream* d){} ));
+
+    // sink->set_formatter
+    // (
+    //     expr::stream << expr::smessage
+    // );
+
+    // // sink->set_filter(
+    // //     severity >= woo::xl320::info
+    // //     );
+
+    // logging::core::get()->add_sink(sink);
+}
+
 //! Main enter point
 //!
 int main(int argc, char *argv[])
@@ -79,6 +108,8 @@ int main(int argc, char *argv[])
         cerr << "usage: test-01 /dev/tty" << endl;
         return 1;
     }
+
+    initLogs();
 
     // Prepare xl service
     xlService.setSerialDevice(argv[1]);
