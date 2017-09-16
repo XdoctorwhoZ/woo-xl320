@@ -2,7 +2,11 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.8.0)
 PROJECT(WooArduinoXl320 CXX)
 MESSAGE("[ in] ${CMAKE_CURRENT_LIST_FILE}")
 
-# - Global includes
+# - Options
+OPTION(WOO_XL320_BUILD_APPS "Build test/demo apps for xl320" OFF)
+OPTION(WOO_XL320_DEBUG_LOG "Record full debug logs into a file" OFF)
+
+# - Locale includes
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_LIST_DIR}/include)
 
 # - CXX

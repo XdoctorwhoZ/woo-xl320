@@ -7,6 +7,7 @@ MESSAGE("[ in] ${CMAKE_CURRENT_LIST_FILE}")
 ADD_LIBRARY(
     woo-xl320
     SHARED
+    Log.cxx
     Servo.cxx
     Packet.cxx
     Service.cxx

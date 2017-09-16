@@ -2,6 +2,9 @@
 #define WOO_XL320_PACKET_H
 #pragma once
 
+// woo
+#include "Log.h"
+
 // std
 #include <vector>
 #include <cstdarg>

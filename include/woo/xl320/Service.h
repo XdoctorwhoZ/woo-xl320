@@ -17,32 +17,14 @@
 
 // boost
 #include <boost/bind.hpp>
-// #include <boost/thread.hpp>
-#include <boost/signals2.hpp>
 #include <boost/asio.hpp>
+#include <boost/signals2.hpp>
 #include <boost/asio/serial_port.hpp>
 #include <boost/system/error_code.hpp>
 #include <boost/system/system_error.hpp>
-#include <boost/log/expressions.hpp>
-#include <boost/log/sources/record_ostream.hpp>
-#include <boost/log/sources/severity_channel_logger.hpp>
-#include <boost/log/sinks/sync_frontend.hpp>
-#include <boost/log/sinks/text_ostream_backend.hpp>
 
 // ---
 namespace woo { namespace xl320 {
-
-//!
-enum LogLevel
-{
-    debug = 0,
-    info = 1,
-    warning = 2,
-    error = 3,
-};
-
-//!
-typedef boost::log::sources::severity_channel_logger_mt<LogLevel, std::string> Logger;
 
 //! Main class of xl320 servos
 //! Control reception and transmission of data
@@ -60,8 +42,8 @@ private:
     // helpers
     typedef boost::asio::io_service BioService;
     typedef boost::asio::deadline_timer BdTimer;
-    typedef boost::shared_ptr<std::thread> ThreadPtr;
-    typedef boost::shared_ptr<boost::asio::serial_port> SerialPortPtr;
+    typedef std::shared_ptr<std::thread> ThreadPtr;
+    typedef std::shared_ptr<boost::asio::serial_port> SerialPortPtr;
 
     //! Timeout values defintion in ms
     static constexpr int PingTimeout = 5000;
@@ -70,10 +52,7 @@ private:
     // Configurable options for the serial device
     std::string mSerialDevice;
     uint32_t    mSerialBaudrate;
-    
-    //!
-    Logger mLog;
-    
+
     //! Boost asio service object, it is required by the boost serial port
     BioService mIos;
 
@@ -114,6 +93,10 @@ private:
 
     //! All servos connected to this service
     std::list<std::shared_ptr<Servo>> mServos;
+
+    //!
+    uint32_t mSerialErrors;
+    static constexpr int MaxSerialErrors = 20;
 
 public:
 

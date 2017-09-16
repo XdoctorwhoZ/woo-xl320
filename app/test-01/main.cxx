@@ -11,43 +11,46 @@
 
 // ---
 using namespace std;
-namespace logging = boost::log;
-namespace sinks = boost::log::sinks;
-namespace expr = boost::log::expressions;
 
 // 
 int state = 0;
+std::mutex xmutex;
 woo::xl320::Service xlService;
 boost::asio::io_service asioService;
 boost::asio::deadline_timer actionTimer(asioService);
 
 woo::xl320::Servo* servo;
 
-// log config
-BOOST_LOG_ATTRIBUTE_KEYWORD(channel, "Channel", std::string)
-BOOST_LOG_ATTRIBUTE_KEYWORD(severity, "Severity", woo::xl320::LogLevel)
+//!
+void goPing()
+{
+    std::lock_guard<std::mutex> lock(xmutex);
+    cout << "    - Ping" << endl;
+    xlService.sendPing();
+}
 
 //!
 void testMachineState()
 {
+    std::lock_guard<std::mutex> lock(xmutex);
     switch(state)
     {
         case 0:
         {
-            BOOST_LOG_TRIVIAL(info) << "-- State 0";
+            cout << "+ State 0, ping in 2 seconds" << endl;
             actionTimer.expires_from_now( boost::posix_time::seconds(2) );
-            actionTimer.async_wait( boost::bind(&woo::xl320::Service::sendPing, &xlService) );
+            actionTimer.async_wait( boost::bind(&goPing) );
             break;
         }
         case 1:
         {
-            BOOST_LOG_TRIVIAL(info) << "-- State 1";
-            BOOST_LOG_TRIVIAL(info) << "   + Id detected: " << xlService.getPingResult().size();
-            // if(xlService.getPingResult().size() > 0)
+            cout << "+ State 1";
+            cout << "    - Id detected: " << xlService.getPingResult().size();
+            // // if(xlService.getPingResult().size() > 0)
             // {
                 // servo = xlService.getServo(xlService.getPingResult().front());
-                servo = xlService.getServo(1);
-                servo->pullAll();
+                // servo = xlService.getServo(1);
+                // servo->pullAll();
             // }
             // else
             // {
@@ -55,48 +58,29 @@ void testMachineState()
             // }
             break;   
         }
+        case 2:
+        {
+            cout << "+ Test end";
+            asioService.stop();
+            break;
+        }
     }
 }
 
 //
 void onCommandFinish()
 {
-    BOOST_LOG_TRIVIAL(info) << "-- ok";
-
+    std::lock_guard<std::mutex> lock(xmutex);
     state++;
-
     actionTimer.expires_from_now( boost::posix_time::seconds(0) );
     actionTimer.async_wait( boost::bind(&testMachineState) );
+    std::cout << "+ End" << std::endl;
 }
 
 //
 void slotNewId(uint8_t id)
 {
-    BOOST_LOG_TRIVIAL(info) << "    + New id detected: " << (int)id;
-}
-
-void initLogs()
-{
-    // // Prepare 
-    // typedef boost::log::sinks::synchronous_sink< 
-    //     boost::log::sinks::text_ostream_backend > text_sink;
-    // boost::shared_ptr< text_sink > sink = boost::make_shared< text_sink >();
-
-    // // sink->locked_backend()->add_stream(
-    // //     boost::make_shared< std::ofstream >("full.log"));
-    // sink->locked_backend()->add_stream(
-    //     boost::shared_ptr<std::ostream>(&std::cout, [](std::ostream* d){} ));
-
-    // sink->set_formatter
-    // (
-    //     expr::stream << expr::smessage
-    // );
-
-    // // sink->set_filter(
-    // //     severity >= woo::xl320::info
-    // //     );
-
-    // logging::core::get()->add_sink(sink);
+    std::cout << "+ New id detected: " << (int)id << std::endl;
 }
 
 //! Main enter point
@@ -108,8 +92,6 @@ int main(int argc, char *argv[])
         cerr << "usage: test-01 /dev/tty" << endl;
         return 1;
     }
-
-    initLogs();
 
     // Prepare xl service
     xlService.setSerialDevice(argv[1]);
@@ -124,37 +106,9 @@ int main(int argc, char *argv[])
     actionTimer.expires_from_now( boost::posix_time::seconds(0) );
     actionTimer.async_wait( boost::bind(&testMachineState) );
 
-
-
-    // boost::this_thread::sleep_for(boost::chrono::milliseconds(5000));
-    
-    // LOG_INFO << servo;
-
-
+    // Start loop
     boost::asio::io_service::work idleWork(asioService);
     asioService.run();
 
     return 0;
 }
-
-/*
-    // // Prepare 
-    // typedef boost::log::sinks::synchronous_sink< 
-    //     boost::log::sinks::text_ostream_backend > text_sink;
-    // boost::shared_ptr< text_sink > sink = boost::make_shared< text_sink >();
-
-    // sink->locked_backend()->add_stream(
-    //     boost::make_shared< std::ofstream >("full.log"));
-    // sink->locked_backend()->add_stream(
-    //     boost::shared_ptr<std::ostream>(&std::cout, [](std::ostream* d){} ));
-
-
-    // sink->set_formatter
-    // (
-    //     expr::stream << "___"  << expr::smessage
-    // );
-
-    // sink->set_filter(channel == "woo::xl320");
-
-    // logging::core::get()->add_sink(sink);
-*/
