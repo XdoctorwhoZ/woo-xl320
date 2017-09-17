@@ -24,7 +24,7 @@ woo::xl320::Servo* servo;
 //!
 void goPing()
 {
-    std::lock_guard<std::mutex> lock(xmutex);
+    // std::lock_guard<std::mutex> lock(xmutex);
     cout << "    - Ping" << endl;
     xlService.sendPing();
 }
@@ -32,7 +32,7 @@ void goPing()
 //!
 void testMachineState()
 {
-    std::lock_guard<std::mutex> lock(xmutex);
+    // std::lock_guard<std::mutex> lock(xmutex);
     switch(state)
     {
         case 0:
@@ -44,23 +44,37 @@ void testMachineState()
         }
         case 1:
         {
-            cout << "+ State 1";
-            cout << "    - Id detected: " << xlService.getPingResult().size();
-            // // if(xlService.getPingResult().size() > 0)
-            // {
-                // servo = xlService.getServo(xlService.getPingResult().front());
-                // servo = xlService.getServo(1);
-                // servo->pullAll();
-            // }
-            // else
-            // {
-            //     BOOST_LOG_TRIVIAL(error) << "-- Test end, no servo available";    
-            // }
+            cout << "+ State 1" << endl;
+            cout << "    - Id detected: " << xlService.getPingResult().size() << endl;
+            if (xlService.getPingResult().size() > 0)
+            {
+                servo = xlService.getServo(xlService.getPingResult().front());
+                            // servo->pull(woo::xl320::Servo::RegisterIndex::ID);
+                servo->pullAll();
+            }
+            else
+            {
+                asioService.stop();
+                cout << "    - No servo detected stop test" << endl;
+            }
             break;   
         }
         case 2:
         {
-            cout << "+ Test end";
+            cout << "+ State 2" << endl;
+            cout << "    - " << *servo << endl;
+            servo->pull(woo::xl320::Servo::RegisterIndex::ID);
+            break;
+        }
+        case 3:
+        {
+            cout << "+ State 3" << endl;
+            cout << "    - " << *servo << endl;          
+            break;
+        }
+        case 4:
+        {
+            cout << "+ Test end" << endl;
             asioService.stop();
             break;
         }
@@ -70,10 +84,11 @@ void testMachineState()
 //
 void onCommandFinish()
 {
-    std::lock_guard<std::mutex> lock(xmutex);
+    // std::lock_guard<std::mutex> lock(xmutex);
     state++;
-    actionTimer.expires_from_now( boost::posix_time::seconds(0) );
-    actionTimer.async_wait( boost::bind(&testMachineState) );
+    asioService.post( &testMachineState );
+    // actionTimer.expires_from_now( boost::posix_time::seconds(0) );
+    // actionTimer.async_wait( boost::bind(&testMachineState) );
     std::cout << "+ End" << std::endl;
 }
 
@@ -102,12 +117,17 @@ int main(int argc, char *argv[])
     xlService.commandEnded.connect(&onCommandFinish);
     xlService.newPingIdReceived.connect(&slotNewId);
 
+
+    boost::asio::io_service::work idleWork(asioService);
+
     // Start actions
-    actionTimer.expires_from_now( boost::posix_time::seconds(0) );
-    actionTimer.async_wait( boost::bind(&testMachineState) );
+
+    asioService.post( &testMachineState );
+
+    // actionTimer.expires_from_now( boost::posix_time::seconds(0) );
+    // actionTimer.async_wait( boost::bind(&testMachineState) );
 
     // Start loop
-    boost::asio::io_service::work idleWork(asioService);
     asioService.run();
 
     return 0;

@@ -38,7 +38,6 @@ Service::Service(const char* dev, uint32_t baud)
     , mSerialBaudrate(baud)
     , mReadBuffer(ReadBufferMaxSize)
     , mCommandInProcess(false)
-    , mCommandTimer(mIos)
     , mCommandTimeout(mIos)
     , mSerialErrors(0)
 {
@@ -147,8 +146,7 @@ void Service::registerCommand(const Command& cmd)
     mCommandQueue.push(cmd);
 
     // Reset timer to transfert execution in thread
-    mCommandTimer.expires_from_now( boost::posix_time::seconds(0) );
-    mCommandTimer.async_wait( boost::bind(&Service::sendNextCommand, this) );
+    mIos.post(boost::bind(&Service::sendNextCommand, this));
 }
 
 /* ============================================================================
@@ -492,6 +490,5 @@ void Service::endCommand()
     commandEnded();
 
     // Try to send next command
-    mCommandTimer.expires_from_now( boost::posix_time::seconds(0) );
-    mCommandTimer.async_wait( boost::bind(&Service::sendNextCommand, this) );
+    mIos.post(boost::bind(&Service::sendNextCommand, this));
 }

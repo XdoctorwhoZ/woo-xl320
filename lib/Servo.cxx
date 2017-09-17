@@ -133,18 +133,31 @@ void Servo::set(RegisterIndex index, uint16_t value)
  * */
 void Servo::pull(RegisterIndex beg_index, RegisterIndex end_index)
 {
-    if (!mService) {
+    log() << "+ Servo::Pull " << (int)beg_index << "->" << (int)end_index;
+
+    // Check service
+    if (!mService)
+    {
+        log() << "    - Service not set";
         return;
     }
 
+    // Get entry for each index
     const RegisterEntry& beg_entry = RegisterMap[beg_index];
     const RegisterEntry& end_entry = RegisterMap[end_index];
+
+    // Compute parameters for the command
+    const uint8_t addr = beg_entry.address;
+    const uint8_t size = (end_entry.address - beg_entry.address) + end_entry.size;
+
+    // Logs for debug
+    log() << "    - Id  :" << (int)mId;
+    log() << "    - Addr:" << (int)addr;
+    log() << "    - Size:" << (int)size;
+
+    // Register command
     mService->registerCommand(
-        Command ( Command::Type::pull
-                , mId
-                , beg_entry.address
-                , (end_entry.address - beg_entry.address) + end_entry.size
-           )
+        Command(Command::Type::pull, mId, addr, size)
         );
 }
 

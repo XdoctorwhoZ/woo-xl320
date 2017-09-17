@@ -135,8 +135,8 @@ public:
     //! Get remote value from servo
     void pull(RegisterIndex index) { pull(index, index); }
     void pull(RegisterIndex beg_index, RegisterIndex end_index);
-    void pullAll() { pull(ModelNumber, Punch); }
-    // void pullAll() { pull(ModelNumber, PresentPosition); }
+    // void pullAll() { pull(ModelNumber, Punch); }
+    void pullAll() { pull(ModelNumber, PresentPosition); }
     // it seems that max len of reply packet is 50 bytes...
     // if I request too much, I don't get all the data
 

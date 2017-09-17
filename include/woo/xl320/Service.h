@@ -41,7 +41,7 @@ private:
 
     // helpers
     typedef boost::asio::io_service BioService;
-    typedef boost::asio::deadline_timer BdTimer;
+    typedef boost::asio::deadline_timer AsioTimer;
     typedef std::shared_ptr<std::thread> ThreadPtr;
     typedef std::shared_ptr<boost::asio::serial_port> SerialPortPtr;
 
@@ -78,9 +78,8 @@ private:
     //! pass false when command result has been received
     bool mCommandInProcess;
 
-    //! Timer to program next command sending
-    BdTimer mCommandTimer;
-    BdTimer mCommandTimeout;
+    //!
+    AsioTimer mCommandTimeout;
 
     //! Command currently executed
     Command mCurrentCommand;
