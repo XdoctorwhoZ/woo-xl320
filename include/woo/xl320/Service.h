@@ -40,7 +40,7 @@ public:
 private:
 
     // helpers
-    typedef boost::asio::io_service BioService;
+    typedef boost::asio::io_service AsioService;
     typedef boost::asio::deadline_timer AsioTimer;
     typedef std::shared_ptr<std::thread> ThreadPtr;
     typedef std::shared_ptr<boost::asio::serial_port> SerialPortPtr;
@@ -54,7 +54,7 @@ private:
     uint32_t    mSerialBaudrate;
 
     //! Boost asio service object, it is required by the boost serial port
-    BioService mIos;
+    AsioService mIos;
 
     //! Thread in which mIos will run
     ThreadPtr mIosThread;

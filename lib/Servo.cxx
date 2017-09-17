@@ -120,12 +120,18 @@ uint16_t Servo::get(RegisterIndex index) const
  * */
 void Servo::set(RegisterIndex index, uint16_t value)
 {
+    // log
+    log() << "+ Servo::set(" << (int)index << ", " << value << ")";
+
+    // Get entry in the map
     const RegisterEntry& entry = RegisterMap[index];
+
+    // set data in buffer
     set(index, value, mRegisterModifiedData);
+
+    // set flags
     for(uint8_t i=entry.address ; i<entry.address+entry.size ; i++)
-    {
         mModiflags.set(i);
-    }
 }
 
 /* ============================================================================
@@ -133,7 +139,7 @@ void Servo::set(RegisterIndex index, uint16_t value)
  * */
 void Servo::pull(RegisterIndex beg_index, RegisterIndex end_index)
 {
-    log() << "+ Servo::Pull " << (int)beg_index << "->" << (int)end_index;
+    log() << "+ Servo::pull " << (int)beg_index << "->" << (int)end_index;
 
     // Check service
     if (!mService)
@@ -166,12 +172,18 @@ void Servo::pull(RegisterIndex beg_index, RegisterIndex end_index)
  * */
 void Servo::push()
 {
-    if (!mService) {
+    // Log
+    log() << "+ Servo::Push";
+
+    // Check service
+    if ( !mService )
+    {
+        log() << "    - Service not set";
         return;
     }
 
+    // Function to extract block and send request
     int i=0;
-
     auto pushNextBlock = [this, &i]()
     {
         uint8_t addr;
@@ -183,13 +195,17 @@ void Servo::push()
         }
         addr = i;
 
-        if(i == 53) { return false; }
-
+        if(i >= 53) { return false; }
+        
         while( (mModiflags.test(i)) && (i<53) )
         {
             i++;
         }
         size = i - addr;
+
+        log() << "    - Push block found";
+        log() << "    -    addr: " << (int)addr;
+        log() << "    -    size: " << (int)size;
 
         mService->registerCommand (
             Command ( Command::Type::push
@@ -200,13 +216,14 @@ void Servo::push()
                )
             );
 
-        if(i == 53) { return true; }
+        if(i >= 53) { return true;  }
+        else        { return false; }
     };
 
-
+    // Push while there are blocks
     while( pushNextBlock() ) { };
 
-    // 
+    // Reset modified flags
     mModiflags.reset();
 }
 

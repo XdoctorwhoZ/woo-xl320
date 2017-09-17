@@ -49,11 +49,15 @@ std::vector<uint8_t> Command::toDataArray()
             Packet::Build(buffer, mId, Packet::Instruction::InsRead, params);
             break;
         }
-    //     case Type::push:
-    //     {
-
-    //         break;
-    //     }
+        case Type::push:
+        {
+            std::vector<uint8_t> params;
+            params.push_back(Packet::WordLoByte(mAddr));
+            params.push_back(Packet::WordHiByte(mAddr));
+            params.insert(params.end(), mData.begin(), mData.end());
+            Packet::Build(buffer, mId, Packet::Instruction::InsWrite, params);
+            break;
+        }
     }
 
     return buffer;

@@ -69,10 +69,21 @@ void testMachineState()
         case 3:
         {
             cout << "+ State 3" << endl;
-            cout << "    - " << *servo << endl;          
+            cout << "    - " << *servo << endl;
+            cout << "    - Set goal pos to 0 then push" << endl;
+            servo->set(woo::xl320::Servo::RegisterIndex::GoalPosition, 0);
+            servo->push();
             break;
         }
         case 4:
+        {
+            cout << "+ State 4" << endl;
+            cout << "    - Set goal pos to 1000 then push" << endl;
+            servo->set(woo::xl320::Servo::RegisterIndex::GoalPosition, 1000);
+            servo->push();
+            break;   
+        }
+        case 5:
         {
             cout << "+ Test end" << endl;
             asioService.stop();
