@@ -49,8 +49,7 @@ void testMachineState()
             if (xlService.getPingResult().size() > 0)
             {
                 servo = xlService.getServo(xlService.getPingResult().front());
-                            // servo->pull(woo::xl320::Servo::RegisterIndex::ID);
-                servo->pullAll();
+                servo->pull(woo::xl320::Servo::RegisterIndex::ID);
             }
             else
             {
@@ -62,14 +61,15 @@ void testMachineState()
         case 2:
         {
             cout << "+ State 2" << endl;
-            cout << "    - " << *servo << endl;
-            servo->pull(woo::xl320::Servo::RegisterIndex::ID);
+            cout << *servo << endl;
+            // servo->pullAll();
+            servo->pull(woo::xl320::Servo::RegisterIndex::PresentPosition);
             break;
         }
         case 3:
         {
             cout << "+ State 3" << endl;
-            cout << "    - " << *servo << endl;
+            cout << *servo << endl;
             cout << "    - Set goal pos to 0 then push" << endl;
             servo->set(woo::xl320::Servo::RegisterIndex::GoalPosition, 0);
             servo->push();
@@ -93,7 +93,7 @@ void testMachineState()
 }
 
 //
-void onCommandFinish()
+void onCommandFinish(woo::xl320::CommandExecutionStats stats)
 {
     // std::lock_guard<std::mutex> lock(xmutex);
     state++;

@@ -6,6 +6,11 @@ MESSAGE("[ in] ${CMAKE_CURRENT_LIST_FILE}")
 OPTION(WOO_XL320_BUILD_APPS "Build test/demo apps for xl320" OFF)
 OPTION(WOO_XL320_DEBUG_LOG "Record full debug logs into a file" OFF)
 
+# - Enable debug logs
+if(WOO_XL320_DEBUG_LOG)
+	ADD_DEFINITIONS(-DWOO_XL320_DEBUG_LOG)
+endif()
+
 # - Locale includes
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_LIST_DIR}/include)
 

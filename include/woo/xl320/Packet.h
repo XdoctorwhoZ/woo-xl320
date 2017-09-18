@@ -93,7 +93,17 @@ public:
     uint16_t    getParameterCount() const { return getLength() - 3; }
     uint8_t     getParameter(int n) const { return mData[8+n]; }    
     uint16_t    getCrc()            const { return MakeWord(mData[mDataSize-2], mData[mDataSize-1]); }
-    
+
+    uint16_t    getReadValue()      const
+    {
+        switch(getParameterCount())
+        {
+            case 2: return MakeWord(mData[9], 0);
+            case 3: return MakeWord(mData[9], mData[10]);
+            default: return 42;
+        }
+    }
+
     const uint8_t* beginReadData() const { return mData+9; }
     const uint8_t* endReadData()   const { return mData+(9+getParameterCount()-1); }
 

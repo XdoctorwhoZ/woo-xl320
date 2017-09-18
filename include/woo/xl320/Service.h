@@ -11,6 +11,7 @@
 #include <thread>
 #include <memory>
 #include <sstream>
+#include <chrono>
 
 // woo
 #include "Servo.h"
@@ -26,6 +27,11 @@
 // ---
 namespace woo { namespace xl320 {
 
+struct CommandExecutionStats
+{
+    std::chrono::milliseconds execution_time;
+};
+
 //! Main class of xl320 servos
 //! Control reception and transmission of data
 class Service
@@ -40,74 +46,66 @@ public:
 private:
 
     // helpers
-    typedef boost::asio::io_service AsioService;
-    typedef boost::asio::deadline_timer AsioTimer;
-    typedef std::shared_ptr<std::thread> ThreadPtr;
-    typedef std::shared_ptr<boost::asio::serial_port> SerialPortPtr;
-
-    //! Timeout values defintion in ms
-    static constexpr int PingTimeout = 5000;
-    static constexpr int DefaultTimeout = 5000;
+    typedef boost::asio::deadline_timer         AsioTimer;
+    typedef boost::asio::io_service             AsioService;
+    typedef boost::asio::io_service::work       AsioServiceWork;
+    typedef boost::asio::serial_port            AsioSerialPort;
+    typedef std::chrono::milliseconds           Milliseconds;
+    typedef std::chrono::high_resolution_clock  HrClock;
+    typedef std::shared_ptr<Servo>              ServoPtr;
+    typedef std::shared_ptr<std::thread>        ThreadPtr;
+    typedef std::shared_ptr<AsioServiceWork>    AsioServiceWorkPtr;
+    typedef std::shared_ptr<AsioSerialPort>     AsioSerialPortPtr;
+    typedef std::lock_guard<std::mutex>         ScopeLock;
 
     // Configurable options for the serial device
     std::string mSerialDevice;
     uint32_t    mSerialBaudrate;
 
-    //! Boost asio service object, it is required by the boost serial port
+    //! Boost asio service, it is the main object of this class
+    //! This service runs the xl320 service in a separate thread
     AsioService mIos;
-
-    //! Thread in which mIos will run
-    ThreadPtr mIosThread;
+    ThreadPtr   mIosThread;
 
     //! Serial port interface
-    SerialPortPtr mPort;
+    AsioSerialPortPtr       mPort;
+    uint32_t                mPortErrors;
+    static constexpr int    MaxPortErrors = 20;
 
-    //! Buffer to read incomming data from serial port
+    // ReadBuffer : Buffer to read incomming data from serial port
+    // ParseBuffer: Buffer that contains data that are waiting to be parsed 
     std::vector<uint8_t> mReadBuffer;
+    std::vector<uint8_t> mParseBuffer;
     static constexpr int ReadBufferMaxSize = 256;
 
-    //! Buffer that contains data that are waiting to be parsed 
-    std::vector<uint8_t> mParseBuffer;
-
-    //! mIos will run on a different thread
-    //! This mutex will prevent race condition on data
-    std::mutex mMutex;
-
-    //! Running command indicator
-    //! pass true when command is sent
-    //! pass false when command result has been received
-    bool mCommandInProcess;
-
-    //!
-    AsioTimer mCommandTimeout;
-
-    //! Command currently executed
-    Command mCurrentCommand;
-
+    //! Running indicator
+    //! pass true  when is sent
+    //! pass false when result has been received
+    bool                mOrderInProcess;
+    bool                mCommandInProcess;
     //! Commands that must be send
     std::queue<Command> mCommandQueue;
-
-    //! List of ids reached by ping
-    std::list<uint8_t> mPingResult;
+    //! Command currently executed
+    Command::Order      mOrderCurrent;
+    Command             mCommandCurrent;
+    //! Timer to stop command that does not end alone
+    AsioTimer           mOrderTimeout;
+    static constexpr int OrderTimeout = 5000;
+    //! Commands are the interface of the service with user
+    //! User will be on an other thread, therefore command must be protected with mutex
+    std::mutex          mCommandMutex;
+    //!
+    HrClock::time_point mCommandStartTime;
 
     //! All servos connected to this service
-    std::list<std::shared_ptr<Servo>> mServos;
+    std::list<ServoPtr> mServos;
+    std::mutex          mServosMutex;
 
-    //!
-    uint32_t mSerialErrors;
-    static constexpr int MaxSerialErrors = 20;
+    //! List of ids reached by ping
+    std::list<uint8_t>  mPingResult;
+    mutable std::mutex  mPingMutex;
 
 public:
-
-    // === SIGNALS ===
-
-    //! Emitted when the running command has received an answers or timeout
-    boost::signals2::signal<void(void)> commandEnded;
-
-    //! Emitted when a new servo id is detected next to a ping
-    boost::signals2::signal<void(uint8_t)> newPingIdReceived;
-
-    // === SIGNALS ===
 
     //! Constructor
     Service(const char* dev = "/dev/ttyACM0", uint32_t baud = 115200);
@@ -132,17 +130,24 @@ public:
     //! Function to register a command in the queue
     void registerCommand(const Command& cmd);
 
-    //! Return the list of id from ping
-    std::list<uint8_t> getPingResult() const { return mPingResult; }
-
     //! Get servo controller for servo id
     Servo* getServo(uint8_t id);
 
+    //! Return the list of id from ping
+    std::list<uint8_t> getPingResult() const { ScopeLock lock(mPingMutex); return mPingResult; }
+
+    // === SIGNALS ===
+
+    //! Emitted when the running command has executed all its orders
+    boost::signals2::signal<void(CommandExecutionStats)> commandEnded;
+
+    //! Emitted when a new servo id is detected next to a ping
+    boost::signals2::signal<void(uint8_t)> newPingIdReceived;
+
 private:
 
-    //! Take the next command in the tx queue and send it
-    //! If a command is already running, a timer will call back this function later
-    void sendNextCommand();
+    //! Run the command state machine to send command and orders
+    void commandStateMachine();
 
     //! Request async read on the port
     void prepareAsyncRead();
@@ -159,8 +164,8 @@ private:
     void processPacket_Pull(const Packet& pack);
     void processPacket_Push(const Packet& pack);
 
-    //! End the command process
-    void endCommand();
+    //! End the order process
+    void endOrder();
 
 };
 

@@ -60,23 +60,23 @@ const Servo::RegisterEntry Servo::RegisterMap[] =
  * */
 bool Servo::CheckRegisterMapIntegrity()
 {
-    // int i = 0;
-    // while (strcmp(RegisterMap[i+1].area, "END") != 0)
-    // {
-    //     const RegisterEntry& r0 = RegisterMap[i];
-    //     const RegisterEntry& r1 = RegisterMap[i+1];
+    int i = 0;
+    while (strcmp(RegisterMap[i+1].area, "END") != 0)
+    {
+        const RegisterEntry& r0 = RegisterMap[i];
+        const RegisterEntry& r1 = RegisterMap[i+1];
 
-    //     // Check if there is no gaps between registers
-    //     const uint8_t sum = r0.address + r0.size;
-    //     if(sum != r1.address)
-    //     {
-    //         qCritical("Register map error: missing registers %d+%d!=%d", r0.address, r0.size, r1.address);
-    //         return false;
-    //     }
+        // Check if there is no gaps between registers
+        const uint8_t sum = r0.address + r0.size;
+        if(sum != r1.address)
+        {
+            // log() << "Register map error: missing registers %d+%d!=%d", r0.address, r0.size, r1.address);
+            return false;
+        }
 
-    //     i++;
-    // }
-    // return true;
+        i++;
+    }
+    return true;
 }
 
 /* ============================================================================
@@ -91,20 +91,29 @@ int Servo::RegisterMapSize()
 /* ============================================================================
  *
  * */
+Servo::RegisterIndex Servo::RegisterAddr2RegisterIndex(uint8_t addr)
+{
+    for(int i=0 ; i<(int)Servo::RegisterIndex::Total ; i++)
+    {
+        const Servo::RegisterEntry& r = Servo::RegisterMap[i];
+        if(r.address == addr) return (RegisterIndex)i;
+    }
+    return RegisterIndex::Total;
+}
+
+/* ============================================================================
+ *
+ * */
 Servo::Servo(uint8_t id, Service* service)
     : mService(service)
     , mId(id)
 {
-    // if ( ! CheckRegisterMapIntegrity() ) {
-    //     throw std::logic_error("woo::xl320::Servo -> map registers is not valid");
-    // }
+    if ( ! CheckRegisterMapIntegrity() ) {
+        throw std::logic_error("woo::xl320::Servo -> map registers is not valid");
+    }
     const int map_size = RegisterMapSize();
-    mRegisterWorkingData.resize(map_size);
-    std::fill(mRegisterWorkingData.begin(),mRegisterWorkingData.end(),0);
-
-    mModiflags.reset();
-    mRegisterModifiedData.resize(map_size);
-    std::fill(mRegisterModifiedData.begin(),mRegisterModifiedData.end(),0);
+    mData.resize(map_size);
+    std::fill(mData.begin(),mData.end(),0);
 }
 
 /* ============================================================================
@@ -112,7 +121,7 @@ Servo::Servo(uint8_t id, Service* service)
  * */
 uint16_t Servo::get(RegisterIndex index) const
 {
-    return get(index, mRegisterWorkingData);
+    return get(index, mData);
 }
 
 /* ============================================================================
@@ -126,20 +135,17 @@ void Servo::set(RegisterIndex index, uint16_t value)
     // Get entry in the map
     const RegisterEntry& entry = RegisterMap[index];
 
-    // set data in buffer
-    set(index, value, mRegisterModifiedData);
-
-    // set flags
-    for(uint8_t i=entry.address ; i<entry.address+entry.size ; i++)
-        mModiflags.set(i);
+    // Register the modification
+    PushEntry pe = {index, value};
+    mRequestedPush.push(pe);
 }
 
 /* ============================================================================
  *
  * */
-void Servo::pull(RegisterIndex beg_index, RegisterIndex end_index)
+void Servo::pull(const std::list<RegisterIndex>& indexes)
 {
-    log() << "+ Servo::pull " << (int)beg_index << "->" << (int)end_index;
+    log() << "+ Servo::pull(queue_size[" << indexes.size() << "])";
 
     // Check service
     if (!mService)
@@ -148,23 +154,70 @@ void Servo::pull(RegisterIndex beg_index, RegisterIndex end_index)
         return;
     }
 
-    // Get entry for each index
-    const RegisterEntry& beg_entry = RegisterMap[beg_index];
-    const RegisterEntry& end_entry = RegisterMap[end_index];
+    // Prepare command
+    Command command;
 
-    // Compute parameters for the command
-    const uint8_t addr = beg_entry.address;
-    const uint8_t size = (end_entry.address - beg_entry.address) + end_entry.size;
+    // Append order for each pull request
+    for(auto index : indexes)
+    {
+        const RegisterEntry& entry = RegisterMap[index];
+        log() << "    - Add order(pull, " << (int)mId << ", " << (int)entry.address << ", " << (int)entry.size;
+        command << Command::Order(Command::Type::pull, mId, entry.address, entry.size);
+    }
 
-    // Logs for debug
-    log() << "    - Id  :" << (int)mId;
-    log() << "    - Addr:" << (int)addr;
-    log() << "    - Size:" << (int)size;
+    // Finally register command
+    mService->registerCommand( command );
+}
 
-    // Register command
-    mService->registerCommand(
-        Command(Command::Type::pull, mId, addr, size)
-        );
+/* ============================================================================
+ *
+ * */
+void Servo::pull(RegisterIndex index)
+{
+    std::list<RegisterIndex> indexes;
+    indexes.push_back(index);
+    pull(indexes);
+}
+
+/* ============================================================================
+ *
+ * */
+void Servo::pullAll()
+{
+    std::list<RegisterIndex> indexes;
+    indexes.push_back(ModelNumber             );
+    indexes.push_back(VersionofFirmware       );
+    indexes.push_back(ID                      );
+    indexes.push_back(BaudRate                );
+    indexes.push_back(ReturnDelayTime         );
+    indexes.push_back(CWAngleLimit            );
+    indexes.push_back(CCWAngleLimit           );
+    indexes.push_back(ControlMode             );
+    indexes.push_back(LimitTemperature        );
+    indexes.push_back(lowerLimitVoltage       );
+    indexes.push_back(UpperLimitVoltage       );
+    indexes.push_back(MaxTorque               );
+    indexes.push_back(ReturnLevel             );
+    indexes.push_back(AlarmShutdown           );
+    indexes.push_back(TorqueEnable            );
+    indexes.push_back(LED                     );
+    indexes.push_back(DGain                   );
+    indexes.push_back(IGain                   );
+    indexes.push_back(PGain                   );
+    indexes.push_back(GoalPosition            );
+    indexes.push_back(MovingSpeed             );
+    indexes.push_back(TorqueLimit             );
+    indexes.push_back(PresentPosition         );
+    indexes.push_back(PresentSpeed            );
+    indexes.push_back(PresentLoad             );
+    indexes.push_back(PresentVoltage          );
+    indexes.push_back(PresentTemperature      );
+    indexes.push_back(RegisteredInstruction   );
+    indexes.push_back(Moving                  );
+    indexes.push_back(HardwareErrorStatus     );
+    indexes.push_back(Punch                   );
+    indexes.push_back(Total                   );
+    pull(indexes);       
 }
 
 /* ============================================================================
@@ -173,7 +226,7 @@ void Servo::pull(RegisterIndex beg_index, RegisterIndex end_index)
 void Servo::push()
 {
     // Log
-    log() << "+ Servo::Push";
+    log() << "+ Servo::Push()";
 
     // Check service
     if ( !mService )
@@ -182,49 +235,26 @@ void Servo::push()
         return;
     }
 
-    // Function to extract block and send request
-    int i=0;
-    auto pushNextBlock = [this, &i]()
+    // Prepare command
+    Command command;
+
+    // Append order for each push request
+    while(!mRequestedPush.empty())
     {
-        uint8_t addr;
-        uint8_t size;
+        PushEntry pentry = mRequestedPush.front();
+        const RegisterEntry& entry = RegisterMap[pentry.index];
 
-        while( (!mModiflags.test(i)) && (i<53) )
-        {
-            i++;
-        }
-        addr = i;
+        // log
+        log()   << "    - Add order(push, " << (int)mId << ", "
+                << (int)entry.address << ", " << (int)entry.size << ", " << (int)pentry.data << ")";
 
-        if(i >= 53) { return false; }
-        
-        while( (mModiflags.test(i)) && (i<53) )
-        {
-            i++;
-        }
-        size = i - addr;
+        // Append order
+        command << Command::Order(Command::Type::push, mId, entry.address, entry.size, pentry.data);
+        mRequestedPush.pop();
+    }
 
-        log() << "    - Push block found";
-        log() << "    -    addr: " << (int)addr;
-        log() << "    -    size: " << (int)size;
-
-        mService->registerCommand (
-            Command ( Command::Type::push
-                    , mId
-                    , addr
-                    , size
-                    , mRegisterModifiedData.data() + addr
-               )
-            );
-
-        if(i >= 53) { return true;  }
-        else        { return false; }
-    };
-
-    // Push while there are blocks
-    while( pushNextBlock() ) { };
-
-    // Reset modified flags
-    mModiflags.reset();
+    // Finally register command
+    mService->registerCommand( command );
 }
 
 /* ============================================================================

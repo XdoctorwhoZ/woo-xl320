@@ -3,7 +3,8 @@
 
 // std
 #include <fstream>
-
+#include <stdexcept>
+    
 // ---
 using namespace woo::xl320;
 
@@ -13,7 +14,7 @@ using namespace woo::xl320;
 std::string Service::ByteVector2HexStr(const std::vector<uint8_t>& vec, uint32_t limit)
 {
     std::ostringstream s;
-    s << "[" << vec.size() << "][";
+    s << "[" << vec.size() << "]{";
 
     for(auto it=vec.begin() ; it!=vec.end() ; ++it)
     {
@@ -24,7 +25,7 @@ std::string Service::ByteVector2HexStr(const std::vector<uint8_t>& vec, uint32_t
         if(limit <= 0) break;
     }
 
-    s << ']';
+    s << '}';
     return s.str();
 }
 
@@ -34,12 +35,13 @@ std::string Service::ByteVector2HexStr(const std::vector<uint8_t>& vec, uint32_t
 Service::Service(const char* dev, uint32_t baud)
     : mIosThread(0)
     , mPort(0)
+    , mPortErrors(0)
     , mSerialDevice(dev)
     , mSerialBaudrate(baud)
     , mReadBuffer(ReadBufferMaxSize)
+    , mOrderInProcess(false)
     , mCommandInProcess(false)
-    , mCommandTimeout(mIos)
-    , mSerialErrors(0)
+    , mOrderTimeout(mIos)
 {
     mParseBuffer.reserve(ReadBufferMaxSize);
 }
@@ -59,7 +61,7 @@ void Service::start()
 {
     boost::system::error_code ec;
 
-    log() << "+ Service start...";
+    log() << "+ Service::start()...";
 
     // Check if the port is already opened
     if (mPort)
@@ -72,13 +74,13 @@ void Service::start()
     log() << "    - Baudrate (" << mSerialBaudrate << ")";
 
     // Create serial port
-    mPort = SerialPortPtr(new boost::asio::serial_port(mIos));
+    mPort.reset(new AsioSerialPort(mIos));
     mPort->open(mSerialDevice, ec);
     if (ec)
     {
         log() << "    ! Port openning failed... dev("
               << mSerialDevice << "), err(" << ec.message().c_str() << ")";
-        return;
+        throw std::runtime_error("Unable to open serial port");
     }
 
     // option settings...
@@ -96,7 +98,7 @@ void Service::start()
     prepareAsyncRead();
 
     // log
-    log() << "    - Started";
+    log() << "+ Service::start()...OK";
 }
 
 /* ============================================================================
@@ -104,12 +106,12 @@ void Service::start()
  * */
 void Service::stop()
 {
+    // log
+    log() << "+ Service::stop()...";
+
     // Stop service and wait thread end
     mIos.stop();
     if (mIosThread) mIosThread->join();
-
-    // Lock
-    std::lock_guard<std::mutex> lock(mMutex);
 
     // Delete port if 
     if (mPort)
@@ -123,7 +125,7 @@ void Service::stop()
     mIos.reset();
 
     // log
-    log() << "+ Stop";
+    log() << "+ Service::stop()...OK";
 }
 
 /* ============================================================================
@@ -131,8 +133,11 @@ void Service::stop()
  * */
 void Service::sendPing()
 {
-    log() << "+ Ping";
-    registerCommand( Command(Command::Type::ping) );
+    // log
+    log() << "+ Service::sendPing()";
+
+    // Prepare command with only ping order then register it
+    registerCommand( Command() << Command::Order(Command::Type::ping) );
 }
 
 /* ============================================================================
@@ -140,13 +145,17 @@ void Service::sendPing()
  * */
 void Service::registerCommand(const Command& cmd)
 {
-    std::lock_guard<std::mutex> lock(mMutex);
+    // log
+    log() << "+ Service::registerCommand()";
+
+    // Lock
+    ScopeLock lock(mCommandMutex);
  
     // Append command to queue
     mCommandQueue.push(cmd);
 
-    // Reset timer to transfert execution in thread
-    mIos.post(boost::bind(&Service::sendNextCommand, this));
+    // Post action to execute the next command
+    mIos.post(boost::bind(&Service::commandStateMachine, this));
 }
 
 /* ============================================================================
@@ -154,13 +163,24 @@ void Service::registerCommand(const Command& cmd)
  * */
 Servo* Service::getServo(uint8_t id)
 {
+    //log
+    log() << "+ Service::getServo(" << (int)id << ")";
+
+    // lock
+    ScopeLock lock(mServosMutex);
+
+    // Check that servo is not already created for this id
     for(auto& s : mServos)
     {
         if(s->getId() == id)
         {
+            log() << "    - Servo already created";
             return s.get();
         }
     }
+
+    // Create a new servo for this id and return it
+    log() << "    - Create servo";
     std::shared_ptr<Servo> servoPtr(new Servo(id, this));
     mServos.push_back(servoPtr);
     return servoPtr.get();
@@ -169,51 +189,94 @@ Servo* Service::getServo(uint8_t id)
 /* ============================================================================
  *
  * */
-void Service::sendNextCommand()
+void Service::commandStateMachine()
 {
-    std::lock_guard<std::mutex> lock(mMutex);
-
-    log() << "+ Send next command";
-
-    // No more command to send
-    if( mCommandQueue.empty() )
-    {
-        log() << "    - Command queue is empty";
-        return;
-    }
-
-    // A command is already running
-    if( mCommandInProcess )
-    {
-        log() << "    - A command is already running, wait...";
-        return;
-    }
-
-    // Command is now running
-    mCommandInProcess = true;
-    int timeout = DefaultTimeout;
-
-    // Take next comment
-    mCurrentCommand = mCommandQueue.front();
-    mCommandQueue.pop();
-
-    // Reset ping result if it is an other ping command
-    if(mCurrentCommand.getType() == Command::Type::ping)
-    {
-        timeout = PingTimeout;
-        mPingResult.clear();
-    }
-
-    // Send command
-    auto data = mCurrentCommand.toDataArray();
-    mPort->write_some( boost::asio::buffer(data, data.size()) );
-    
     // log
-    log() << "    - Command sent: " << ByteVector2HexStr(data);
+    log() << "+ Service::commandStateMachine()";
 
-    // Start timeout timer
-    mCommandTimeout.expires_from_now( boost::posix_time::milliseconds(timeout) );
-    mCommandTimeout.async_wait( boost::bind(&Service::endCommand, this) );
+    // lock
+    ScopeLock lock(mCommandMutex);
+
+    // First check if a command is already running
+    if( !mCommandInProcess )
+    {
+        // log
+        log() << "    - Try to get the next command";
+
+        // No more command to send
+        if( mCommandQueue.empty() )
+        {
+            log() << "    - Command queue is empty";
+            return;
+        }
+
+        // Take next comment
+        // Command is now running
+        mCommandStartTime = HrClock::now();
+        mCommandInProcess = true;
+        mCommandCurrent = mCommandQueue.front();
+        mCommandQueue.pop();
+
+        // log
+        log() << "    - New command selected";
+
+        // Try to send next command
+        mIos.post(boost::bind(&Service::commandStateMachine, this));
+    }
+    else
+    {
+        // Check if order is already running
+        if(mOrderInProcess)
+        {
+            log() << "    - Order already running, wait...";
+            return;
+        }
+
+        // Check if the command has no more order to execute
+        if(mCommandCurrent.isOver())
+        {
+            // log
+            log() << "    - Command is over";
+
+            // Reset flag
+            mCommandInProcess = false;
+
+            CommandExecutionStats stats;
+            stats.execution_time = std::chrono::duration_cast<Milliseconds>(HrClock::now() - mCommandStartTime);
+
+            // Signal to listeners
+            commandEnded(stats);
+
+            // Try to send next command
+            mIos.post(boost::bind(&Service::commandStateMachine, this));
+            return;
+        }
+
+        // Extract next order
+        mOrderInProcess = true;
+        mOrderCurrent = mCommandCurrent.extract();
+
+        // Reset ping result if it is an other ping command
+        if(mOrderCurrent.type == Command::Type::ping)
+        {
+            mPingMutex.lock();
+            mPingResult.clear();
+            mPingMutex.unlock();
+        }
+
+        // Get packet from the order
+        auto data = mOrderCurrent.toByteArray();
+
+        // log
+        log() << "    - Command sent: " << ByteVector2HexStr(data);
+
+        // Send command packet
+        mPort->write_some( boost::asio::buffer(data, data.size()) );
+
+        // Start timeout timer
+        mOrderTimeout.expires_from_now( boost::posix_time::milliseconds(OrderTimeout) );
+        mOrderTimeout.async_wait( boost::bind(&Service::endOrder, this) );
+    }
 }
 
 /* ============================================================================
@@ -222,7 +285,7 @@ void Service::sendNextCommand()
 void Service::prepareAsyncRead()
 {
     // log
-    log() << "+ Prepare async read";
+    log() << "+ Service::prepareAsyncRead()";
 
     // Check that port is ready
     if (mPort.get() == NULL || !mPort->is_open())
@@ -247,11 +310,11 @@ void Service::prepareAsyncRead()
  * */
 void Service::readReceivedData(const boost::system::error_code& ec, size_t bytes_transferred)
 {
-    // lock data
-    std::lock_guard<std::mutex> lock(mMutex);
-
     // log
-    log() << "+ Read received data";
+    log() << "+ Service::readReceivedData(" << bytes_transferred << ")";
+
+    // lock data
+    ScopeLock lock(mCommandMutex);
 
     // Check that port is ready
     if (mPort.get() == NULL || !mPort->is_open())
@@ -264,8 +327,8 @@ void Service::readReceivedData(const boost::system::error_code& ec, size_t bytes
     if (ec)
     {
         log() << "    - Async read error(" << ec.message().c_str() << ")";
-        mSerialErrors++;
-        if (mSerialErrors >= MaxSerialErrors)
+        mPortErrors++;
+        if (mPortErrors >= MaxPortErrors)
         {
             std::ostringstream err;
             err << "Number of errors max reached (last:" << ec.message() << ")";
@@ -275,8 +338,8 @@ void Service::readReceivedData(const boost::system::error_code& ec, size_t bytes
         return;
     }
 
-    // Debug ultra
-    log() << "    data received: " << ByteVector2HexStr(mReadBuffer, bytes_transferred);
+    // log
+    log() << "    - Data received: " << ByteVector2HexStr(mReadBuffer, bytes_transferred);
 
     // Store data for later parse
     mParseBuffer.insert(
@@ -297,12 +360,12 @@ void Service::readReceivedData(const boost::system::error_code& ec, size_t bytes
 void Service::parsePacket()
 {
     // log
-    log() << "parse packet from buffer " << ByteVector2HexStr(mParseBuffer);
+    log() << "+ Service::parsePacket(" << ByteVector2HexStr(mParseBuffer) << ")";
 
     // Check if the buffer is not empty
     if (mParseBuffer.empty())
     {
-        log() << "    parse buffer is empty";
+        log() << "    - Parse buffer is empty";
         return;
     }
 
@@ -315,14 +378,14 @@ void Service::parsePacket()
     {
         if( (size+plus) <= mParseBuffer.size() )
         {
-            log() << "    (" << size << "," << index << ",+" << plus << ")";
+            log() << "    - (" << size << "," << index << ",+" << plus << ")";
             size += plus;
             index = size-1;
             return true;
         }
         else
         {
-            log() << "    no more data to read need(" << size+plus << ") left(" << mParseBuffer.size() << ")";
+            log() << "    - No more data to read need(" << size+plus << ") left(" << mParseBuffer.size() << ")";
             return false;
         }
     };
@@ -331,7 +394,7 @@ void Service::parsePacket()
     // index = 0
     if( (uint8_t)mParseBuffer[index] != (uint8_t)0xFF )
     {
-        log() << "    Packet byte 0 must be 0xFF";
+        log() << "    - Packet byte 0 must be 0xFF";
         mParseBuffer.erase(mParseBuffer.begin(), mParseBuffer.begin()+size);
         return;
     }
@@ -342,7 +405,7 @@ void Service::parsePacket()
     // index = 1
     if( (uint8_t)mParseBuffer[index] != (uint8_t)0xFF )
     {
-        log() << "    Packet byte 1 must be 0xFF";
+        log() << "    - Packet byte 1 must be 0xFF";
         mParseBuffer.erase(mParseBuffer.begin(), mParseBuffer.begin()+size);
         return;
     }
@@ -353,7 +416,7 @@ void Service::parsePacket()
     // index = 2
     if( (uint8_t)mParseBuffer[index] != (uint8_t)0xFD )
     {
-        log() << "    Packet byte 2 must be 0xFD";
+        log() << "    - Packet byte 2 must be 0xFD";
         mParseBuffer.erase(mParseBuffer.begin(), mParseBuffer.begin()+size);
         return;
     }
@@ -371,11 +434,11 @@ void Service::parsePacket()
     uint8_t lenH = mParseBuffer[index]; // 6
     int len = Packet::MakeWord(lenL, lenH);
 
-    log() << "    packet len(" << len << ")";
+    log() << "    - Packet len(" << len << ")";
     
     if(!upSize(len)) { return ; }
 
-    log() << "    packet complete size(" << size << ")";
+    log() << "    - Packet complete size(" << size << ")";
     
     // Use packet
     Packet pack(mParseBuffer.data(), size);
@@ -393,9 +456,9 @@ void Service::parsePacket()
  * */
 void Service::processPacket(const Packet& pack)
 {
-    log() << "process packet(" << pack << ")";
+    log() << "+ Service::processPacket(" << pack << ")";
 
-    switch(mCurrentCommand.getType())
+    switch(mOrderCurrent.type)
     {
         case Command::Type::none: break;
         case Command::Type::ping: processPacket_Ping(pack); break;
@@ -420,10 +483,14 @@ void Service::processPacket_Ping(const Packet& pack)
         {
             // each packet received is a servo that give its ID
             uint8_t id = pack.getId();
+
+            // append this id in the result vector
+            mPingMutex.lock();
             mPingResult.push_back( id );
+            mPingMutex.unlock();
 
             // log
-            log() << "ping new id detected: (" << (int)id << ")";
+            log() << "    - Ping new id detected: (" << (int)id << ")";
 
             // signal to app
             newPingIdReceived(id);
@@ -431,7 +498,7 @@ void Service::processPacket_Ping(const Packet& pack)
         }
         default:
         {
-            log() << "unexpected message received in ping context " << pack;
+            log() << "    - Unexpected message received in ping context " << pack;
             break;
         }
     }
@@ -446,25 +513,27 @@ void Service::processPacket_Pull(const Packet& pack)
     {
         case Packet::Instruction::InsRead:
         {
-            log() << "    - pull command echo";
+            log() << "    - Pull command echo";
             break;
         }
         case Packet::Instruction::InsStatus:
         {
+            // Get id and log
             uint8_t id = pack.getId();
-            log() << "    - pull answer for servo " << (int)id;
+            log() << "    - Pull answer for servo " << (int)id;
 
+            // Update servo data
             Servo* servo = getServo(id);
-            servo->update( (Servo::RegisterIndex)mCurrentCommand.getAddr()
-                         , pack.beginReadData()
-                         , pack.endReadData()
-                );
-            endCommand();
+            Servo::RegisterIndex index = Servo::RegisterAddr2RegisterIndex( mOrderCurrent.addr );
+            servo->update( index, pack.getReadValue() );
+
+            // Terminate order normally
+            endOrder();
             break;
         }
         default:
         {
-            // BOOST_LOG_SEV(mLog, warning) << "    - unexpected message received in pull context " << pack;
+            log() << "    - Unexpected message received in pull context " << pack;
             break;
         }
     }
@@ -475,20 +544,37 @@ void Service::processPacket_Pull(const Packet& pack)
  * */
 void Service::processPacket_Push(const Packet& pack)
 {
-
+    switch(pack.getInstruction())
+    {
+        case Packet::Instruction::InsWrite:
+        {
+            log() << "    - Push command echo";
+            break;
+        }
+        case Packet::Instruction::InsStatus:
+        {
+            log() << "    - Push answer";
+            // Terminate order normally
+            endOrder();
+            break;
+        }
+        default:
+        {
+            log() << "    - Unexpected message received in push context " << pack;
+            break;
+        }
+    }
 }
 
 /* ============================================================================
  *
  * */
-void Service::endCommand()
+void Service::endOrder()
 {
-    mCommandInProcess = false;
-    mCommandTimeout.cancel();
-
-    // Signal to listeners
-    commandEnded();
+    // Set flags
+    mOrderInProcess = false;
+    mOrderTimeout.cancel();
 
     // Try to send next command
-    mIos.post(boost::bind(&Service::sendNextCommand, this));
+    mIos.post(boost::bind(&Service::commandStateMachine, this));
 }

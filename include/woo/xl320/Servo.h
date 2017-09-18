@@ -6,9 +6,11 @@
 #include "Command.h"
 
 // std
+#include <list>
 #include <vector>
 #include <bitset>
 #include <cstring>
+#include <numeric>
 
 // ---
 namespace woo { namespace xl320 {
@@ -16,11 +18,18 @@ namespace woo { namespace xl320 {
 // ---
 class Service;
 
-//! Class to manage servo data
+//! Class to manage servo data and facilitate the use of service commands
+//!
+//! It seems that max len of reply packet is 50 bytes...
+//! if I request too much, I don't get all the data
+//! 
+//! It also seems that if I request more than 1 reg at a time
+//! I get correct value only for the first, Therefore I go with 1 request at time
+//!
 class Servo
 {
 
-    //!
+    //! Only service can use some internal method of Servo
     friend class Service;
 
     // helper
@@ -84,13 +93,14 @@ public:
         Moving                  = 34,
         HardwareErrorStatus     = 35,
         Punch                   = 36,
+        Total                   = 37,
     };
 
-    //! 
-    struct ModifEntry
+    //! Modification request
+    struct PushEntry
     {
-        uint8_t     addr;
-        ByteArray   data;
+        RegisterIndex index;
+        uint16_t      data;
     };
 
     //! Map of registers of the servo
@@ -102,43 +112,37 @@ public:
     //! Return the size of the all register block
     static int RegisterMapSize();
 
+    //!
+    static RegisterIndex RegisterAddr2RegisterIndex(uint8_t addr);
+
 public:
 
-    // Associated service
+    //! Associated service
     Service* mService;
 
-    // Id
+    //! Id
     uint8_t mId;
 
-    //! Image that represents non sync user modifications
-    ByteArray mRegisterWorkingData;
+    //! Image that represents servo registers
+    ByteArray mData;
 
-    //! When a bit is set to 1 the byte has been modified
-    std::bitset<53> mModiflags;
-    //! Image that store data that the user want to modify
-    ByteArray mRegisterModifiedData;
+    //! Modification requested by user but not put already
+    std::queue<PushEntry> mRequestedPush;
 
     //! Constructor
     Servo(uint8_t id = 1, Service* service = 0);
 
-public:
-
     // Basic getters
     uint8_t getId() { return mId; }
 
-    //! To extract a value from working registers
+    // Getter and setter for local values
     uint16_t get(RegisterIndex index) const;
-
-    //! To set a value in working registers
     void set(RegisterIndex index, uint16_t value);
 
     //! Get remote value from servo
-    void pull(RegisterIndex index) { pull(index, index); }
-    void pull(RegisterIndex beg_index, RegisterIndex end_index);
-    // void pullAll() { pull(ModelNumber, Punch); }
-    void pullAll() { pull(ModelNumber, PresentPosition); }
-    // it seems that max len of reply packet is 50 bytes...
-    // if I request too much, I don't get all the data
+    void pull(const std::list<RegisterIndex>& indexes);
+    void pull(RegisterIndex index);
+    void pullAll();
 
     //! Send local modification to remote servo
     void push();
@@ -151,38 +155,21 @@ private:
     //! To set a value in working registers
     void set(RegisterIndex index, uint16_t value, ByteArray& regTable);
 
-    //!
-    template<class IT>
-    void set(RegisterIndex index, IT beg, IT end, ByteArray& regTable)
-    {
-        const RegisterEntry& entry = RegisterMap[index];
-        std::copy(beg, end, regTable.begin()+entry.address);
-    }
-
-    //! Update locals and remotes values
-    template<class IT>
-    void update(RegisterIndex index, IT beg, IT end)
-    {
-        set(index, beg, end, mRegisterWorkingData);
-    }
+    //! Update local values
+    void update(RegisterIndex index, uint16_t value) { set(index, value, mData); }
 
 };
-
 
 //! ostream support for packet object
 inline std::ostream& operator<<(std::ostream& os, const Servo& obj)
 {
-    int i = 0;
-    // os <<
-    while (strcmp(Servo::RegisterMap[i].area, "END") != 0)
+    for(int i=0 ; i<(int)Servo::RegisterIndex::Total ; i++)
     {
         const Servo::RegisterEntry& r = Servo::RegisterMap[i];
-        os << "(" << r.name << "," << obj.get((Servo::RegisterIndex)r.address) << ")-";
-        i++;
+        os << "    - " << r.name << " : " << obj.get((Servo::RegisterIndex)i) << "\r\n";
     }
     return os;
 }
-
 
 } // xl320
 } // woo

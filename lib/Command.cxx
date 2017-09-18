@@ -7,32 +7,21 @@ using namespace woo::xl320;
 /* ============================================================================
  *
  * */
-Command::Command(Type type, uint8_t id, uint8_t addr, uint8_t size)
-    : mType(type)
-    , mId(id)
-    , mAddr(addr)
-    , mSize(size)
+Command::Order::Order(Type type, uint8_t id, uint8_t addr, uint8_t size, uint16_t data)
+    : type(type)
+    , id(id)
+    , addr(addr)
+    , size(size)
+    , data(data)
 { }
 
 /* ============================================================================
  *
  * */
-Command::Command(Type type, uint8_t id, uint8_t addr, uint8_t size, uint8_t* data)
-    : mType(type)
-    , mId(id)
-    , mAddr(addr)
-    , mSize(size)
-    , mData(data, data+size)
-{ }
-
-/* ============================================================================
- *
- * */
-std::vector<uint8_t> Command::toDataArray()
+std::vector<uint8_t> Command::Order::toByteArray()
 {
     std::vector<uint8_t> buffer;
-
-    switch(mType)
+    switch(type)
     {
         case Type::ping:
         {
@@ -42,23 +31,32 @@ std::vector<uint8_t> Command::toDataArray()
         case Type::pull:
         {
             std::vector<uint8_t> params;
-            params.push_back(Packet::WordLoByte(mAddr));
-            params.push_back(Packet::WordHiByte(mAddr));
-            params.push_back(Packet::WordLoByte(mSize));
-            params.push_back(Packet::WordHiByte(mSize));
-            Packet::Build(buffer, mId, Packet::Instruction::InsRead, params);
+            params.push_back(Packet::WordLoByte(addr));
+            params.push_back(Packet::WordHiByte(addr));
+            params.push_back(Packet::WordLoByte(size));
+            params.push_back(Packet::WordHiByte(size));
+            Packet::Build(buffer, id, Packet::Instruction::InsRead, params);
             break;
         }
         case Type::push:
         {
             std::vector<uint8_t> params;
-            params.push_back(Packet::WordLoByte(mAddr));
-            params.push_back(Packet::WordHiByte(mAddr));
-            params.insert(params.end(), mData.begin(), mData.end());
-            Packet::Build(buffer, mId, Packet::Instruction::InsWrite, params);
+            params.push_back(Packet::WordLoByte(addr));
+            params.push_back(Packet::WordHiByte(addr));
+            switch(size)
+            {
+                case  1:
+                    params.push_back(Packet::WordLoByte(data));
+                    break;
+                case  2:
+                    params.push_back(Packet::WordLoByte(data));
+                    params.push_back(Packet::WordHiByte(data));
+                    break;
+                default: break;
+            }
+            Packet::Build(buffer, id, Packet::Instruction::InsWrite, params);
             break;
         }
     }
-
     return buffer;
 }

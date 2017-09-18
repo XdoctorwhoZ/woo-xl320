@@ -13,27 +13,25 @@
 // ---
 namespace woo { namespace xl320 {
 
+//!
 class ofStreamWrapper
 {
-
 public:
 
     std::ofstream stream;
 
     ofStreamWrapper(){}
-    
     ~ofStreamWrapper()
     {
         if(stream.is_open()) { stream.close(); }
     }
-    
     void openIfNot()
     {
-        if(!stream.is_open()) { stream.open("woo_xl320.log"); }
+        if(!stream.is_open()) { stream.open("woo-xl320.log"); }
     }
 };
 
-//!
+//! Class to log into a debug file
 class FileLog
 {
 
@@ -52,7 +50,7 @@ public:
         File.openIfNot();
         File.stream
             << "0x" << std::hex << std::this_thread::get_id()
-            << " # " << mLocalBuffer->str()
+            << "\t\t" << mLocalBuffer->str()
             << "\n";
         File.stream.flush();
     }
@@ -65,22 +63,23 @@ public:
     }
 };
 
-
+//! Empty log interface to skip logs
 class EmptyLog
 {
 public:
     EmptyLog() { }
-    
     template<typename T>
     EmptyLog& operator<<(const T& el) { return *this; }
 };
 
-
+//! Interface function for the all application
 inline auto log()
 {
-// #if
+#ifdef WOO_XL320_DEBUG_LOG
     return FileLog();
-    // return EmptyLog();
+#else
+    return EmptyLog();
+#endif
 }
 
 } // xl320
