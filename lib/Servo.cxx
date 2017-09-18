@@ -161,7 +161,8 @@ void Servo::pull(const std::list<RegisterIndex>& indexes)
     for(auto index : indexes)
     {
         const RegisterEntry& entry = RegisterMap[index];
-        log() << "    - Add order(pull, " << (int)mId << ", " << (int)entry.address << ", " << (int)entry.size;
+        log()   << "    - Add order(pull, " << (int)mId << ", "
+                << (int)entry.address << ", " << (int)entry.size << ")";
         command << Command::Order(Command::Type::pull, mId, entry.address, entry.size);
     }
 
