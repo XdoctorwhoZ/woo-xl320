@@ -4,14 +4,13 @@
  *  Created on: 2013. 4. 25.
  *      Author: ROBOTIS,.LTD.
  */
+#include "XL320.h"
 #include <string.h>
-#include "dxl_pro.h"
 
 /* gbpRxBuffer    gbDXLWritePointer
 extern uint32_t Dummy(uint32_t tmp);
 extern void uDelay(uint32_t uTime);
 extern void nDelay(uint32_t nTime);*/
-
 
 unsigned short update_crc(unsigned short crc_accum, unsigned char *data_blk_ptr, unsigned short data_blk_size)
 {

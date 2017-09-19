@@ -21,24 +21,26 @@ public:
     enum Type
     {
         none,
-        ping, // Send a ping to all servos to get available ids
-        pull, // Read data
-        push, // Write data
+        ping,   // Send a ping to all servos to get available ids
+        pull,   // Read data
+        push,   // Write data
+        freset, // Factory reset 
+        reboot, // Reboot
     };
 
     //! Simple element of a command
     struct Order
     {
         //! Type of wrok to do
-        Type        type;
-        //! Id of the servo that must get the info
-        uint8_t     id;
+        Type type;
+        //! Ids of the servos targeted by the order
+        std::vector<uint8_t> ids;
         //! Start address to read or write
-        uint8_t     addr;
+        uint8_t addr;
         //! Number of byte to read or write
-        uint8_t     size;
-        //! Data to write
-        uint16_t    data;
+        uint8_t size;
+        //! Data to write for each servo id
+        std::vector<uint16_t> data;
 
         //! Constructor
         Order(Type type = none
@@ -46,6 +48,12 @@ public:
                , uint8_t  addr = 0
                , uint8_t  size = 0
                , uint16_t data = 0
+               );
+        Order(Type type
+               , const std::vector<uint8_t>& ids
+               , uint8_t  addr = 0
+               , uint8_t  size = 0
+               , const std::vector<uint16_t>& data = std::vector<uint16_t>()
                );
 
         //! Build the instruction packet ready to be sent through serial port
