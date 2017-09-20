@@ -73,7 +73,7 @@ int Packet::validate() const
     unsigned short crc1 = update_crc(0, mData, mDataSize-2);
     if(crc0 != crc1)
     {
-        return 1;
+        return 2;
     }
 
     // OK

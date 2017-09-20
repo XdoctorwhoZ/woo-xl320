@@ -23,11 +23,13 @@ void setup()
 //! Loop function
 void loop()
 {
-    PC_SERIAL.println("+ Ping");
+    PC_SERIAL.println("###");
+    PC_SERIAL.println("### START ###");
 
     // Get available servos
-    byte servoIds[xl320::Constant::SelectSizeMax];
-    byte numberOfServo = controller.ping(servoIds);
+    static byte servoIds[xl320::Constant::SelectSizeMax];
+    static byte numberOfServo; 
+    numberOfServo = controller.ping(servoIds);
     PC_SERIAL.print("    - Found ");
     PC_SERIAL.print((int)numberOfServo);
     PC_SERIAL.println(" servos");
@@ -38,23 +40,33 @@ void loop()
         PC_SERIAL.print("+ Read from servo ");
         PC_SERIAL.println(servoIds[i]);
 
-        controller.selectServo(servoIds+i, 1);
+        // Select the servo that we are going to read 
+        byte servo = servoIds[i];
+        controller.selectServo(&servo, 1);
 
-        int values[numberOfServo];
+        // Create a table for the read values
+        // There will be one value per servo selected
+        static int read_value[8];
 
-        // Read id
-        controller.pull(xl320::RegIndex::Id, values);
-        PC_SERIAL.print("    - ID: ");
-        PC_SERIAL.println(values[0]);
+        controller.pull(xl320::RegIndex::ModelNumber, read_value);
+        PC_SERIAL.print("#### ModelNumber: ");
+        PC_SERIAL.println(read_value[0]);
+        
+        controller.pull(xl320::RegIndex::Version, read_value);
+        PC_SERIAL.print("#### Version: ");
+        PC_SERIAL.println(read_value[0]);
 
-        // Read present voltage
-        controller.pull(xl320::RegIndex::PresentVoltage, values);
-        PC_SERIAL.print("    - Voltage: ");
-        PC_SERIAL.println(values[0]);
+        controller.pull(xl320::RegIndex::Id, read_value);
+        PC_SERIAL.print("#### Id: ");
+        PC_SERIAL.println(read_value[0]);
+
+        controller.pull(xl320::RegIndex::BaudRate, read_value);
+        PC_SERIAL.print("#### BaudRate: ");
+        PC_SERIAL.println(read_value[0]);
+
     }
 
-
-
-    // Wait 10sec
-    delay(10000);
+    // Wait
+    PC_SERIAL.println("===================================================");
+    delay(3 * 1000);
 }

@@ -175,11 +175,11 @@ int Controller::receiveData(unsigned long usTimeout)
     int rsize = 0;
     unsigned long startTime = micros();
 
-#ifdef XL320Controller_DEBUG
-    Serial.print("#ReceiveData:t=");
+    #ifdef XL320Controller_DEBUG
+    Serial.print("+ ReceiveData:t=");
     Serial.print(usTimeout, DEC);
     Serial.print("us... ");
-#endif // XL320Controller_DEBUG
+    #endif // XL320Controller_DEBUG
 
     // While not timeout and buffer not full
     while( (abs(micros() - startTime) <= usTimeout) && (mRxBytes < RxBufferSize) )
@@ -197,10 +197,10 @@ int Controller::receiveData(unsigned long usTimeout)
         }
     }
 
-#ifdef XL320Controller_DEBUG
-    Serial.print("size=");
+    #ifdef XL320Controller_DEBUG
+    Serial.print("    - size=");
     Serial.println(mRxBytes, DEC);
-#endif // XL320Controller_DEBUG
+    #endif // XL320Controller_DEBUG
 
     return mRxBytes;
 }
@@ -284,7 +284,7 @@ int Controller::readValuesFromRxPackets(int* values)
     {
         if(sts != 0) continue;
         // Check that it is a status packet
-        if(pack.getInstruction() == InsStatus)
+        if(pack.getInstruction() == Status)
         {
             int value = 0;
 
@@ -562,7 +562,7 @@ int Controller::ping(int* ids)
     {
         if(sts != 0) continue;
         // Check that it is a status packet
-        if(pack.getInstruction() == InsStatus)
+        if(pack.getInstruction() == Status)
         {
             ids[number] = (int) pack.getId();
             number++;

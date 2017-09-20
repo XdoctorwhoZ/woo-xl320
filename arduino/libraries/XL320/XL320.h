@@ -82,18 +82,18 @@ struct RegInfo
 //! Available instructions
 enum Instruction
 {
-    InsPing            = 0x01 , // Instruction that checks whether the Packet has arrived to a device with the same ID as Packet ID
-    InsRead            = 0x02 , // Instruction to read data from the Device
-    InsWrite           = 0x03 , // Instruction to write data on the Device
-    InsRegWrite        = 0x04 , // Instruction that registers the Instruction Packet to a standby status; Packet is later executed through the Action command
-    InsAction          = 0x05 , // Instruction that executes the Packet that was registered beforehand using Reg Write
-    InsFactoryReset    = 0x06 , // Instruction that resets the Control Table to its initial factory default settings
-    InsReboot          = 0x08 , // Instruction to reboot the Device
-    InsStatus          = 0x55 , // Return Instruction for the Instruction Packet
-    InsSyncRead        = 0x82 , // For multiple devices, Instruction to read data from the same Address with the same length at once
-    InsSyncWrite       = 0x83 , // For multiple devices, Instruction to write data on the same Address with the same length at once
-    InsBulkRead        = 0x92 , // For multiple devices, Instruction to read data from different Addresses with different lengths at once
-    InsBulkWrite       = 0x93 , // For multiple devices, Instruction to write data on different Addresses with different lengths at once
+    Ping            = 0x01 , // Instruction that checks whether the Packet has arrived to a device with the same ID as Packet ID
+    Read            = 0x02 , // Instruction to read data from the Device
+    Write           = 0x03 , // Instruction to write data on the Device
+    RegWrite        = 0x04 , // Instruction that registers the Instruction Packet to a standby status; Packet is later executed through the Action command
+    Action          = 0x05 , // Instruction that executes the Packet that was registered beforehand using Reg Write
+    FactoryReset    = 0x06 , // Instruction that resets the Control Table to its initial factory default settings
+    Reboot          = 0x08 , // Instruction to reboot the Device
+    Status          = 0x55 , // Return Instruction for the Instruction Packet
+    SyncRead        = 0x82 , // (130)For multiple devices, Instruction to read data from the same Address with the same length at once
+    SyncWrite       = 0x83 , // (131)For multiple devices, Instruction to write data on the same Address with the same length at once
+    BulkRead        = 0x92 , // For multiple devices, Instruction to read data from different Addresses with different lengths at once
+    BulkWrite       = 0x93 , // For multiple devices, Instruction to write data on different Addresses with different lengths at once
 };
 
 //! Constant value definitions
@@ -184,8 +184,8 @@ struct MultiOrder : public Order
     //! Index of the targeted register
     RegIndex index;
     //! If type==push, this is the data that must be written
-    byte dataSize;
-    int data[Constant::SelectSizeMax];
+    // byte dataSize; // same as idsSize
+    short data[Constant::SelectSizeMax];
 
     byte getRequiredSize();
     void fillBuffer(byte* buffer, byte size);
@@ -203,8 +203,8 @@ class Controller
     //! Size of the Rx buffer, to extends serial buffer
     static constexpr int RxBufferSizeMax = 128;
 
-    //! Time to wait before stop reading data
-    static constexpr unsigned long RxBaseTimeout = 100000;
+    //! Time to wait before stop reading data (in ms)
+    static constexpr unsigned long RxBaseTimeout = 1000;
 
 
     // Serial controller to comminucate with xl-320
@@ -264,22 +264,24 @@ public:
     //! Return false if no packet found, else true
     int getNextPacket(Packet& pack);
 
-    //! Read incoming packets and fill values table.
-    //! values size must be equal to mNumberOfSelectedServo
-    int readValuesFromRxPackets(int* values);
+    //! just erase data in the rx buffer
+    void dropRxData();
 
 
     //! Ping servos and set ids in the table, return the number of answers
     byte ping(byte* ids);
 
-
+    //! Pull values from servos
     byte pull(RegIndex index, int* values);
 
-    // push
-    // reset
-    // reboot
+    //! Push values to servos
+    void push(RegIndex index, int* values);
 
+    //! Reset factory for servos
+    void reset();
 
+    //! Reboot servos
+    void reboot();
 
 };
 
