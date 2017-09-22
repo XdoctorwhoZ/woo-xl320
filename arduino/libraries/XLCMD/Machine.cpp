@@ -109,7 +109,6 @@ void Machine::parse(const char* command)
     {
         ptr++;
         parse_command(ptr);
-
     }
     else // case XL\r\n
     {

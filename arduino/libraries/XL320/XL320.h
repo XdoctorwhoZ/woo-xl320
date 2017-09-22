@@ -3,37 +3,107 @@
 #pragma once
 
 // Arduino
+#include <stdint.h>
 #include <Arduino.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#define MAXNUM_TXPACKET     (255)//(65535)
-#define MAXNUM_RXPACKET     (255)//(65535)
-
-#define DXL_MAKEWORD(a, b)      ((unsigned short)(((unsigned char)(((unsigned long)(a)) & 0xff)) | ((unsigned short)((unsigned char)(((unsigned long)(b)) & 0xff))) << 8))
-#define DXL_MAKEDWORD(a, b)     ((unsigned int)(((unsigned short)(((unsigned long)(a)) & 0xffff)) | ((unsigned int)((unsigned short)(((unsigned long)(b)) & 0xffff))) << 16))
-#define DXL_LOWORD(l)           ((unsigned short)(((unsigned long)(l)) & 0xffff))
-#define DXL_HIWORD(l)           ((unsigned short)((((unsigned long)(l)) >> 16) & 0xffff))
-#define DXL_LOBYTE(w)           ((unsigned char)(((unsigned long)(w)) & 0xff))
-#define DXL_HIBYTE(w)           ((unsigned char)((((unsigned long)(w)) >> 8) & 0xff))
-
-#define RX_TIMEOUT_COUNT2       (1600L) //(1000L) //porting
-#define NANO_TIME_DELAY         (12000) //ydh added 20111228 -> 20120210 edited ydh
-#define RX_TIMEOUT_COUNT1       (RX_TIMEOUT_COUNT2*128L)
-
-unsigned short update_crc(unsigned short crc_accum, unsigned char *data_blk_ptr, unsigned short data_blk_size);
-
-#ifdef __cplusplus
-}
-#endif
 
 // ---
 namespace xl320 {
 
-//! Available baud rates to communicate with xl-320
-enum BaudRate { Br9600=0, Br57600=1, Br115200=2, Br1Mbps=3 };
+//! Class to build and parse data packets
+class Packet
+{
+    // Constant header bytes
+    static constexpr uint8_t Header0 = 0xFF;
+    static constexpr uint8_t Header1 = 0xFF;
+    static constexpr uint8_t Header2 = 0xFD;
+    static constexpr uint8_t Reserve = 0x00;
+
+    // Available instruction
+    static constexpr uint8_t InstructionPing            = 0x01 ; // Instruction that checks whether the Packet has arrived to a device with the same ID as Packet ID
+    static constexpr uint8_t InstructionRead            = 0x02 ; // Instruction to read data from the Device
+    static constexpr uint8_t InstructionWrite           = 0x03 ; // Instruction to write data on the Device
+    static constexpr uint8_t InstructionRegWrite        = 0x04 ; // Instruction that registers the Instruction Packet to a standby status; Packet is later executed through the Action command
+    static constexpr uint8_t InstructionAction          = 0x05 ; // Instruction that executes the Packet that was registered beforehand using Reg Write
+    static constexpr uint8_t InstructionFactoryReset    = 0x06 ; // Instruction that resets the Control Table to its initial factory default settings
+    static constexpr uint8_t InstructionReboot          = 0x08 ; // Instruction to reboot the Device
+    static constexpr uint8_t InstructionStatus          = 0x55 ; // Return Instruction for the Instruction Packet
+    static constexpr uint8_t InstructionSyncRead        = 0x82 ; // (130) For multiple devices, Instruction to read data from the same Address with the same length at once
+    static constexpr uint8_t InstructionSyncWrite       = 0x83 ; // (131) For multiple devices, Instruction to write data on the same Address with the same length at once
+
+    // Id to broadcast to all servos
+    static constexpr uint8_t PacketError = 42;
+
+    // Id to broadcast to all servos
+    static constexpr uint8_t BroadcastId = 0xFE;
+
+    //! To update CRC of packets
+    static uint16_t UpdateCRC(uint16_t crc_accum, uint8_t *data_blk_ptr, uint16_t data_blk_size);
+
+    //! Maximum size of a buffer managed by this class
+    static constexpr uint8_t BufferSizeMax = 255;
+
+    // This class does not allocate any array, it uses a buffer allocated externally
+    // Those members are the pointer on the table and the size of this table
+    uint8_t* mBufferPtr;
+    uint8_t  mBufferSize;
+
+public:
+
+    // Helper functions
+    static inline uint8_t  WordLoByte(uint16_t w) { return (uint8_t) (w & 0xff); }
+    static inline uint8_t  WordHiByte(uint16_t w) { return (uint8_t) ((w >> 8) & 0xff); }
+    static inline uint16_t MakeWord(uint8_t lo, uint8_t hi) { return (uint16_t)( ((uint16_t)lo) | (((uint16_t)hi)<<8) ); }
+
+    //! Prepare packet manager with the following buffer
+    Packet(uint8_t* ptr = 0, uint8_t size = 0);
+
+    //! Build a packet with the following data
+    void build(uint8_t id, uint8_t instruction, uint8_t params_size, uint8_t* params);
+
+    // Basic getters
+    uint8_t  getId()                 const;
+    uint16_t getLength()             const;
+    uint8_t  getInstruction()        const;
+    uint16_t getParameterCount()     const;
+    uint8_t  getParameter(uint8_t n) const;
+    uint16_t getCrc()                const;
+
+    //! Function to check packet structure
+    bool isValid() const;
+
+    //!
+    bool isInstructionStatus() const { return (getInstruction() == InstructionStatus); }
+
+    //! Return string representation of the packet
+    String toString() const;
+
+    // Function to get the buffer size for those instructions
+    static inline uint8_t GetBsPing  ()                                 { return 10; }
+    static inline uint8_t GetBsPull  (uint8_t idSize)                   { return (14 + idSize); }
+    static inline uint8_t GetBsPush  (uint8_t idSize, uint8_t dataSize) { return (14 + idSize + (dataSize*idSize) ); }
+    static inline uint8_t GetBsReset ()                                 { return 10; }
+    static inline uint8_t GetBsReboot()                                 { return 10; }
+
+    // Function to fill buffer with data packet
+    static void FillBPing  (uint8_t* buffer, uint8_t size);
+    static void FillBPull  (  uint8_t* buffer
+                            , uint8_t  size
+                            , uint8_t* ids      // Table with ids of servos from which you want to read
+                            , uint8_t  idSize   // Number of ids in ids table
+                            , uint8_t  rAddr    // Address that must be read
+                            , uint8_t  rSize    // Size of the register that must be read (1 or 2)
+                            );
+    static void FillBPush  (  uint8_t* buffer
+                            , uint8_t  size
+                            , uint8_t* ids
+                            , uint8_t  idSize
+                            , uint8_t  rAddr
+                            , uint8_t  rSize
+                            , uint16_t* values
+                            );
+    static void FillBReset (uint8_t* buffer, uint8_t size);
+    static void FillBReboot(uint8_t* buffer, uint8_t size);
+};
 
 //! Index for the available register table entry
 enum RegIndex
@@ -75,137 +145,37 @@ enum RegIndex
 //! Stored data about each entry of the control table
 struct RegInfo
 {
-    byte addr; // Reg address
-    byte size; // Ref size in byte
-};
-
-//! Available instructions
-enum Instruction
-{
-    Ping            = 0x01 , // Instruction that checks whether the Packet has arrived to a device with the same ID as Packet ID
-    Read            = 0x02 , // Instruction to read data from the Device
-    Write           = 0x03 , // Instruction to write data on the Device
-    RegWrite        = 0x04 , // Instruction that registers the Instruction Packet to a standby status; Packet is later executed through the Action command
-    Action          = 0x05 , // Instruction that executes the Packet that was registered beforehand using Reg Write
-    FactoryReset    = 0x06 , // Instruction that resets the Control Table to its initial factory default settings
-    Reboot          = 0x08 , // Instruction to reboot the Device
-    Status          = 0x55 , // Return Instruction for the Instruction Packet
-    SyncRead        = 0x82 , // (130)For multiple devices, Instruction to read data from the same Address with the same length at once
-    SyncWrite       = 0x83 , // (131)For multiple devices, Instruction to write data on the same Address with the same length at once
-    BulkRead        = 0x92 , // For multiple devices, Instruction to read data from different Addresses with different lengths at once
-    BulkWrite       = 0x93 , // For multiple devices, Instruction to write data on different Addresses with different lengths at once
-};
-
-//! Constant value definitions
-struct Constant
-{
-    static constexpr byte Header0 = 0xFF;
-    static constexpr byte Header1 = 0xFF;
-    static constexpr byte Header2 = 0xFD;
-    static constexpr byte Reserve = 0x00;
-    static constexpr byte BroadcastId = 0xFE;
-
-    //! Maximal number of servo xl-320 selectable at once
-    static constexpr int SelectSizeMax = 8;
-};
-
-//! Packet builder and reader
-class Packet
-{
-
-    //! Data buffer
-    byte* mData;
-
-    //! Size of the data packet
-    int mDataSize;
-
-public:
-
-    //! Prepare packet manager with the following buffer
-    Packet(byte* buf = 0, int size = 0) : mData(buf), mDataSize(size) { }
-
-    //! Build a packet with the following data
-    void build(byte id, Instruction instruction, int params_size, ...);
-    void build(byte id, Instruction instruction, int params_size, byte* params);
-
-    // Basic getters
-    byte getId() const { return mData[4]; }
-    int getLength() const { return (int)DXL_MAKEWORD(mData[5], mData[6]); }
-    Instruction getInstruction() const { return (Instruction)mData[7]; }
-    int getParameterCount() const { return getLength() - 3; }
-    byte getParameter(int n) const { return mData[8+n]; }
-    unsigned short getCrc() const { return (unsigned short)DXL_MAKEWORD(mData[mDataSize-2], mData[mDataSize-1]); }
-
-    //! Function to check packet structure
-    int validate() const;
-
-    //! Return string representation of the packet
-    String toString() const;
-
-};
-
-//! Structure to abstract packet creation
-struct Order
-{
-    //! Available order types
-    enum Type { Ping, Pull, Push, Reset, Reboot };
-
-    //! Provide the size required to the buffer to contain the order packet
-    virtual byte getRequiredSize() = 0;
-
-    //! Fill the buffer with the packet data
-    virtual void fillBuffer(byte* buffer, byte size) = 0;
-};
-
-//! Simple order to target only one servo and simple request
-struct SimpleOrder : public Order
-{
-    //! Order type
-    Type type;
-    //! Id of the targeted servo
-    byte id;
-    //! Index of the targeted register
-    RegIndex index;
-    //! If type==push, this is the data that must be written
-    int data;
-
-    byte getRequiredSize();
-    void fillBuffer(byte* buffer, byte size);
-};
-
-//! Order to target multiple servos and simple request
-struct MultiOrder : public Order
-{
-    //! Order type
-    Type type;
-    //! Ids of the targeted servos
-    byte idsSize;
-    byte ids[Constant::SelectSizeMax];
-    //! Index of the targeted register
-    RegIndex index;
-    //! If type==push, this is the data that must be written
-    // byte dataSize; // same as idsSize
-    short data[Constant::SelectSizeMax];
-
-    byte getRequiredSize();
-    void fillBuffer(byte* buffer, byte size);
+    uint8_t addr; // Reg address
+    uint8_t size; // Ref size in byte
 };
 
 //! Manager to easily control servos
 class Controller
 {
+
+public:
+
     //! To easily change serial class without template
     typedef HardwareSerial XlSerial;
 
     //! Type to store a baudrate value
-    typedef unsigned long baudrate_t;
+    typedef uint32_t baudrate_t;
+
+    //! Maximal number of servo xl-320 selectable at once
+    static constexpr uint8_t SelectSizeMax = 8;
+
+private:
 
     //! Size of the Rx buffer, to extends serial buffer
-    static constexpr int RxBufferSizeMax = 128;
+    static constexpr uint16_t RxBufferSizeMax = 128;
 
     //! Time to wait before stop reading data (in ms)
-    static constexpr unsigned long RxBaseTimeout = 1000;
+    static constexpr uint16_t RxBaseTimeout = 1000;
 
+    // Return values for getNextPacket
+    static constexpr uint8_t EndOfBuffer = 42;
+    static constexpr uint8_t IncompletPk = 21;
+    static constexpr uint8_t ValidPacket =  0;
 
     // Serial controller to comminucate with xl-320
     // and the current baudrate of mXlSerial
@@ -214,15 +184,15 @@ class Controller
 
     // mSelectIds : List of servos id selected for next command
     // mSelectSize: Number of usefull element in mSelectIds
-    byte mSelectIds[Constant::SelectSizeMax];
-    byte mSelectSize;
+    uint8_t mSelectIds[SelectSizeMax];
+    uint8_t mSelectSize;
 
-    // mRxPtr       : Current read pointer on the rx buffer
+    // mRxPtr       : Current read pointer on the rx buffer, for parsing purpose
     // mRxBuffer    : Buffer for incoming packets
     // mRxBufferSize: Number of bytes in the RxBuffer
-    byte* mRxPtr;
-    byte  mRxBuffer[RxBufferSizeMax];
-    short mRxBufferSize;
+    uint8_t* mRxPtr;
+    uint8_t  mRxBuffer[RxBufferSizeMax];
+    uint16_t mRxBufferSize;
 
 public:
 
@@ -243,45 +213,45 @@ public:
     void setXlBaudRate(baudrate_t br);
 
 
-    //! Function to execute an order
-    void orderExec(Order* order);
-
-
     //! Return the number of servo selected for actions
-    byte getSelectSize() const { return mSelectSize; }
+    uint8_t getSelectSize() const { return mSelectSize; }
 
     //! Return a pointer on the table of ids
-    const byte* getSelectIds() const { return mSelectIds; }
+    const uint8_t* getSelectIds() const { return mSelectIds; }
 
     //! Select servo ids
-    void selectServo(const byte* ids, byte number = 1);
-
-
-    //! Read data from serial during usTimeout micro-secondes
-    int receiveData(unsigned long usTimeout);
-
-    //! Get the next packet in the RxBuffer
-    //! Return false if no packet found, else true
-    int getNextPacket(Packet& pack);
-
-    //! just erase data in the rx buffer
-    void dropRxData();
+    void selectServo(const uint8_t* ids, uint8_t number = 1);
 
 
     //! Ping servos and set ids in the table, return the number of answers
-    byte ping(byte* ids);
+    uint8_t ping(uint8_t* ids);
 
     //! Pull values from servos
-    byte pull(RegIndex index, int* values);
+    uint8_t pull(RegIndex index, uint16_t* values);
 
     //! Push values to servos
-    void push(RegIndex index, int* values);
+    void push(RegIndex index, uint16_t* values);
 
     //! Reset factory for servos
     void reset();
 
     //! Reboot servos
     void reboot();
+
+private:
+
+    //! Send data from the buffer through serial port
+    void sendBuffer(uint8_t* buffer, uint8_t bsize);
+
+    //! Read data from serial during usTimeout micro-secondes
+    uint16_t receiveData(uint16_t usTimeout);
+
+    //! Get the next packet in the RxBuffer
+    //! Return false if no packet found, else true
+    uint8_t getNextPacket(Packet& pack);
+
+    //! just erase data in the rx buffer
+    void dropRxData(); 
 
 };
 

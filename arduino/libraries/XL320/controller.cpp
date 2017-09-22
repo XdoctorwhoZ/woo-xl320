@@ -4,9 +4,6 @@
 // ---
 using namespace xl320;
 
-// Uncomment to debug
-#define XL320Controller_DEBUG
-
 /* ============================================================================
  *
  * */
@@ -78,36 +75,10 @@ void Controller::setXlBaudRate(baudrate_t br)
 /* ============================================================================
  *
  * */
-void Controller::orderExec(Order* order)
-{
-    // Fill buffer
-    const byte size = order->getRequiredSize();
-    byte buffer[size];
-    order->fillBuffer(buffer, size);
-
-    // Debug
-    #ifdef XL320Controller_DEBUG
-    Serial.print("+ Send packet = {");
-    for(int i=0 ; i<size ; i++)
-    {
-        if(i!=0) { Serial.print(", "); }
-        Serial.print((int)buffer[i]);
-    }
-    Serial.println("}");
-    #endif
-
-    // Send packet
-    mXlSerial->write(buffer,size);
-    mXlSerial->flush();
-}
-
-/* ============================================================================
- *
- * */
-void Controller::selectServo(const byte* ids, byte number)
+void Controller::selectServo(const uint8_t* ids, uint8_t number)
 {
     mSelectSize = number;
-    for(int i=0 ; i<mSelectSize ; i++)
+    for(uint8_t i=0 ; i<mSelectSize ; i++)
     {
         mSelectIds[i] = ids[i];
     }
@@ -116,11 +87,326 @@ void Controller::selectServo(const byte* ids, byte number)
 /* ============================================================================
  *
  * */
-int Controller::receiveData(unsigned long msTimeout)
+// #define Controller__ping_DEBUG
+uint8_t Controller::ping(uint8_t* ids)
+{
+    Packet pack;
+    uint8_t sts;
+    uint8_t number;
+
+    #ifdef Controller__ping_DEBUG
+    Serial.println("#### Controller::ping : begin");
+    #endif
+
+    // Prepare data buffer
+    const uint8_t bsize = Packet::GetBsPing();
+    uint8_t buffer[bsize];
+    Packet::FillBPing(buffer, bsize);
+
+    #ifdef Controller__ping_DEBUG
+    Serial.print("#### Controller::ping : data prepared size = ");
+    Serial.println(bsize);
+    #endif
+
+    // Send packet
+    sendBuffer(buffer, bsize);
+
+    #ifdef Controller__ping_DEBUG
+    Serial.println("#### Controller::ping : data sent, wait for an answer");
+    #endif
+
+    // Read data from serial
+    receiveData(RxBaseTimeout);
+
+    #ifdef Controller__ping_DEBUG
+    Serial.print("#### Controller::ping : ");
+    Serial.print(mRxBufferSize);
+    Serial.println(" bytes received");
+    #endif
+
+    // Parse each packet
+    number = 0;
+    while( (sts=getNextPacket(pack)) != EndOfBuffer )
+    {
+        #ifdef Controller__ping_DEBUG
+        Serial.print("#### Controller::ping : analyse packet=");
+        Serial.println(pack.toString().c_str());
+        #endif
+
+        if(sts != ValidPacket)
+        {
+            #ifdef Controller__ping_DEBUG
+            Serial.println("#### Controller::ping : incomplet packet");
+            #endif
+            continue;
+        }
+
+        // Check that it is a status packet
+        if( pack.isInstructionStatus() )
+        {
+            ids[number] = pack.getId();
+
+            #ifdef Controller__ping_DEBUG
+            Serial.print("#### Controller::ping : new id ");
+            Serial.println((int)ids[number]);
+            #endif
+
+            number++;
+        }
+        #ifdef Controller__ping_DEBUG
+        else
+        {
+            Serial.print("#### Controller::ping : echo ");
+            Serial.println( (int)pack.getInstruction() );
+        }
+        #endif
+    }
+
+    #ifdef Controller__ping_DEBUG
+    Serial.print("#### Controller::ping : end ");
+    Serial.print(number);
+    Serial.println(" servos found");
+    #endif
+
+    return number;
+}
+
+/* ============================================================================
+ *
+ * */
+// #define Controller__pull_DEBUG
+uint8_t Controller::pull(RegIndex index, uint16_t* returnVector)
+{
+    Packet pack;
+    uint8_t sts;
+    uint8_t number;
+    uint16_t value;
+
+    #ifdef Controller__pull_DEBUG
+    Serial.println("==== Controller::pull : begin");
+    #endif
+
+    // Prepare data buffer
+    const uint8_t bsize = Packet::GetBsPull(mSelectSize);
+    uint8_t buffer[bsize];
+    Packet::FillBPull(buffer, bsize
+                            , mSelectIds
+                            , mSelectSize
+                            , RegInfoTable[index].addr
+                            , RegInfoTable[index].size
+                            );
+
+    #ifdef Controller__pull_DEBUG
+    Serial.print("==== Controller::pull : data prepared size = ");
+    Serial.println(bsize);
+    #endif
+
+    // Read data from serial
+    receiveData(RxBaseTimeout);
+
+    #ifdef Controller__pull_DEBUG
+    Serial.print("==== Controller::pull : ");
+    Serial.print(mRxBufferSize);
+    Serial.println(" bytes received");
+    #endif
+
+    // Parse each packet
+    number = 0;
+    while( (sts=getNextPacket(pack)) != EndOfBuffer )
+    {
+        #ifdef Controller__pull_DEBUG
+        Serial.print("==== Controller::pull : analyse packet=");
+        Serial.println(pack.toString().c_str());
+        #endif
+
+        if(sts != ValidPacket)
+        {
+            #ifdef Controller__pull_DEBUG
+            Serial.println("==== Controller::pull : incomplet packet");
+            #endif
+            continue;
+        }
+
+        // Check that it is a status packet
+        if( pack.isInstructionStatus() )
+        {
+            const uint8_t id = pack.getId();
+
+            #ifdef Controller__pull_DEBUG
+            Serial.print("==== Controller::pull : answer from id ");
+            Serial.println(id);
+            #endif
+
+            const uint8_t pcount = pack.getParameterCount();
+            switch(pcount)
+            {
+                case 2:
+                    value = (uint16_t) pack.getParameter(1);
+                    break;
+                case 3:
+                    value = (uint16_t) Packet::MakeWord(pack.getParameter(1), pack.getParameter(2));
+                    break;
+                default:
+                    value = 100;
+                    break;
+            }
+
+            #ifdef Controller__pull_DEBUG
+            Serial.print("==== Controller::pull : value is ");
+            Serial.println((int)value);
+            #endif
+
+            for(uint8_t i=0 ; i<mSelectSize ; i++)
+            {
+                if( mSelectIds[i] == id )
+                {
+                    #ifdef Controller__pull_DEBUG
+                    Serial.print("==== Controller::pull : index ");
+                    Serial.println((int)i);
+                    #endif
+
+                    returnVector[i] = value;
+                    break;
+                }
+            }
+
+            number++;
+        }
+        #ifdef Controller__pull_DEBUG
+        else
+        {
+            Serial.print("==== Controller::pull : echo ");
+            Serial.println( (int)pack.getInstruction() );
+        }
+        #endif
+    }
+
+    #ifdef Controller__ping_DEBUG
+    Serial.print("==== Controller::pull : end ");
+    Serial.print(number);
+    Serial.println(" answers");
+    #endif
+
+    return number;
+}
+
+/* ============================================================================
+ *
+ * */
+// #define Controller__push_DEBUG
+void Controller::push(RegIndex index, uint16_t* values)
+{
+    #ifdef Controller__push_DEBUG
+    Serial.println("==== Controller::push : begin");
+    #endif
+
+    // Prepare data buffer
+    const uint8_t bsize = Packet::GetBsPush(mSelectSize, RegInfoTable[index].size);
+    uint8_t buffer[bsize];
+    Packet::FillBPush(buffer, bsize
+                            , mSelectIds
+                            , mSelectSize
+                            , RegInfoTable[index].addr
+                            , RegInfoTable[index].size
+                            , values
+                            );
+
+    #ifdef Controller__push_DEBUG
+    Serial.print("==== Controller::pull : data prepared size = ");
+    Serial.println(bsize);
+    #endif
+
+    // Read data from serial
+    receiveData(RxBaseTimeout);
+    dropRxData();
+
+    #ifdef Controller__push_DEBUG
+    Serial.println("==== Controller::push : end");
+    #endif
+}
+
+/* ============================================================================
+ *
+ * */
+// #define Controller__reset_DEBUG
+void Controller::reset()
+{
+    #ifdef Controller__reset_DEBUG
+    Serial.println("#### Controller::reset : begin");
+    #endif
+
+    // Prepare data buffer
+    const uint8_t bsize = Packet::GetBsReset();
+    uint8_t buffer[bsize];
+    Packet::FillBReset(buffer, bsize);
+
+    // Send packet
+    sendBuffer(buffer, bsize);
+
+    // Read data from serial
+    receiveData(RxBaseTimeout);
+    dropRxData();
+
+    #ifdef Controller__reset_DEBUG
+    Serial.println("#### Controller::reset : end");
+    #endif
+}
+
+/* ============================================================================
+ *
+ * */
+// #define Controller__reboot_DEBUG
+void Controller::reboot()
+{
+    #ifdef Controller__reboot_DEBUG
+    Serial.println("#### Controller::reboot : begin");
+    #endif
+
+    // Prepare data buffer
+    const uint8_t bsize = Packet::GetBsReboot();
+    uint8_t buffer[bsize];
+    Packet::FillBReboot(buffer, bsize);
+
+    // Send packet
+    sendBuffer(buffer, bsize);
+
+    // Read data from serial
+    receiveData(RxBaseTimeout);
+    dropRxData();
+
+    #ifdef Controller__reboot_DEBUG
+    Serial.println("#### Controller::reboot : end");
+    #endif
+}
+
+/* ============================================================================
+ *
+ * */
+// #define Controller__sendBuffer_DEBUG
+void Controller::sendBuffer(uint8_t* buffer, uint8_t bsize)
+{
+    #ifdef Controller__sendBuffer_DEBUG
+    Serial.print("send={");
+    for(uint8_t i=0 ; i<bsize ; i++)
+    {
+        if(i!=0) { Serial.print(", "); }
+        Serial.print((int)buffer[i], HEX);
+    }
+    Serial.println("}");
+    #endif
+
+    // Send packet
+    mXlSerial->write(buffer,bsize);
+    mXlSerial->flush();
+}
+
+/* ============================================================================
+ *
+ * */
+uint16_t Controller::receiveData(uint16_t msTimeout)
 {
     // Reset
-    mRxBufferSize = 0;
-    mRxPtr = mRxBuffer;
+    dropRxData();
 
     int rsize = 0;
     unsigned long startTime = millis();
@@ -158,57 +444,61 @@ int Controller::receiveData(unsigned long msTimeout)
 /* ============================================================================
  *
  * */
-int Controller::getNextPacket(Packet& pack)
+// #define Controller__getNextPacket_DEBUG
+uint8_t Controller::getNextPacket(Packet& pack)
 {
-    byte size = 0;
-    byte* packStart = mRxPtr;
-    int left = (int)(mRxBufferSize-(mRxPtr-mRxBuffer));
+    uint8_t  size = 0;
+    uint8_t* packStart = mRxPtr;
+    uint16_t left = (int)(mRxBufferSize-(mRxPtr-mRxBuffer));
 
-    #ifdef XL320Controller_DEBUG
-    Serial.println("    + Read next packet");
-    Serial.print("        - left=");
+    #ifdef Controller__getNextPacket_DEBUG
+    Serial.print("**** Next packet : left=");
     Serial.println(left, DEC);
-    #endif // XL320Controller_DEBUG
+    #endif
 
     // Check if there are some data left
-    if(left <= 0) { return -42; }
+    if(left <= 0) { return EndOfBuffer; }
 
     // Function to safely increment size
-    auto upSize = [&size, left, this](int plus)
+    auto upSize = [&size, left, this](uint16_t plus)
     {
-        if( (size+plus) <= left ) {
+        if( (size+plus) <= left )
+        {
             size += plus;
             return true;
         }
-        else { return false; }
+        else
+        {
+            return false;
+        }
     };
 
     // Check packet
-    if( mRxPtr[size] != (byte)0xFF ) {
-        mRxPtr += (size+1); return -1; // 0
+    if( mRxPtr[size] != (uint8_t)0xFF ) {
+        mRxPtr += (size+1); return IncompletPk; // 0
     }
-    if(!upSize(1)) { return -42; }
-    if( mRxPtr[size] != (byte)0xFF ) {
-        mRxPtr += (size+1); return -2; // 1
+    if(!upSize(1)) { return EndOfBuffer; }
+    if( mRxPtr[size] != (uint8_t)0xFF ) {
+        mRxPtr += (size+1); return IncompletPk; // 1
     }
-    if(!upSize(1)) { return -42; }
-    if( mRxPtr[size] != (byte)0xFD ) {
-        mRxPtr += (size+1); return -2; // 2
+    if(!upSize(1)) { return EndOfBuffer; }
+    if( mRxPtr[size] != (uint8_t)0xFD ) {
+        mRxPtr += (size+1); return IncompletPk; // 2
     }
-    if(!upSize(3)) { return -42; }
-    byte lenL = mRxPtr[size]; // 5
-    if(!upSize(1)) { return -42; }
-    byte lenH = mRxPtr[size]; // 6
-    if(!upSize(1)) { return -42; }
-    int len = DXL_MAKEWORD(lenL, lenH);
-    if(!upSize(len)) { return -42; }
+    if(!upSize(3)) { return EndOfBuffer; }
+    uint8_t lenL = mRxPtr[size]; // 5
+    if(!upSize(1)) { return EndOfBuffer; }
+    uint8_t lenH = mRxPtr[size]; // 6
+    if(!upSize(1)) { return EndOfBuffer; }
+    uint16_t len = Packet::MakeWord(lenL, lenH);
+    if(!upSize(len)) { return EndOfBuffer; }
 
     // Prepare return value
     mRxPtr += size;
     pack = Packet(packStart, size);
 
-    #ifdef XL320Controller_DEBUG
-    Serial.print("        - packet complete size=");
+    #ifdef Controller__getNextPacket_DEBUG
+    Serial.print("**** Next packet : complete size=");
     Serial.print(size, DEC);
     Serial.print(", data=");
     Serial.println(pack.toString().c_str());
@@ -224,228 +514,4 @@ void Controller::dropRxData()
 {
     mRxBufferSize = 0;
     mRxPtr = mRxBuffer;
-}
-
-/* ============================================================================
- *
- * */
-byte Controller::ping(byte* ids)
-{
-    #ifdef XL320Controller_DEBUG
-    Serial.println("    + Controller::ping");
-    #endif
-
-    // Prepare order
-    SimpleOrder order;
-    order.type = Order::Type::Ping;
-    order.id   = Constant::BroadcastId;
-    orderExec(&order);
-
-    // Read data from serial
-    receiveData(RxBaseTimeout);
-
-    // Parse each packet
-    Packet pack;
-    int sts;
-    int number = 0;
-    while( (sts=getNextPacket(pack)) != -42 )
-    {
-        #ifdef XL320Controller_DEBUG
-            Serial.println("        - Controller::ping -> Analyse packet");
-        #endif
-
-        if(sts != 0)
-        {
-            #ifdef XL320Controller_DEBUG
-            Serial.print("        - Controller::ping -> incomplet packet");
-            Serial.println( (int)pack.getInstruction() );
-            #endif
-            continue;
-        }
-        // Check that it is a status packet
-        if(pack.getInstruction() == Instruction::Status)
-        {
-            ids[number] = (byte)pack.getId();
-
-            #ifdef XL320Controller_DEBUG
-            Serial.print("        - Controller::ping -> new id ");
-            Serial.println((int)ids[number]);
-            #endif
-
-            number++;
-        }
-        else
-        {
-            #ifdef XL320Controller_DEBUG
-            Serial.print("        - Controller::ping -> echo ");
-            Serial.println( (int)pack.getInstruction() );
-            #endif            
-        }
-    }
-    return number;
-}
-
-/* ============================================================================
- *
- * */
-byte Controller::pull(RegIndex index, int* returnVector)
-{
-    #ifdef XL320Controller_DEBUG
-        Serial.println("        - Controller::pull");
-    #endif
-
-    // Prepare order
-    MultiOrder order;
-    order.type = Order::Type::Pull;
-    order.idsSize = mSelectSize;
-    for(int i=0 ; i<mSelectSize ; i++)
-    {
-        order.ids[i] = mSelectIds[i];
-    }
-    order.index = index;
-    orderExec(&order);
-
-    // Read data from serial
-    receiveData(RxBaseTimeout);
-
-    // Parse incomming data
-    // Parse each packet
-    int sts;
-    int number = 0;
-    Packet pack;
-    while( (sts=getNextPacket(pack)) != -42 )
-    {
-        #ifdef XL320Controller_DEBUG
-            Serial.println("        - Controller::readv -> Analyse packet");
-        #endif
-
-        if(sts != 0)
-        {
-            #ifdef XL320Controller_DEBUG
-            Serial.print("        - Controller::readv -> incomplet packet");
-            Serial.println( (int)pack.getInstruction() );
-            #endif
-            continue;
-        }
-
-        // Check that it is a status packet
-        // if(pack.getInstruction() == Instruction::Status)
-        // {
-        //     const int id = pack.getId();
-
-        //     #ifdef XL320Controller_DEBUG
-        //     Serial.print("        - Controller::readv -> read answer from id ");
-        //     Serial.println(id);
-        //     #endif
-
-        //     int value;
-        //     const int pcount = pack.getParameterCount();
-        //     switch(pcount)
-        //     {
-        //         case 2:
-        //             value = (int) pack.getParameter(1);
-        //             break;
-        //         case 3:
-        //             value = (int) DXL_MAKEWORD(pack.getParameter(1), pack.getParameter(2));
-        //             break;
-        //         default:
-        //             value = 0;
-        //             break;
-        //     }
-
-        //     #ifdef XL320Controller_DEBUG
-        //     Serial.print("        - Controller::readv -> value is ");
-        //     Serial.println(value);
-        //     #endif
-
-        //     for(int i=0 ; i<mSelectSize ; i++)
-        //     {
-        //         if( (int)mSelectIds[i] == id )
-        //         {
-        //             #ifdef XL320Controller_DEBUG
-        //             Serial.print("        - Controller::readv -> index ");
-        //             Serial.println(i);
-        //             #endif
-
-        //             // Serial.print("        - Controller::readv -> addr ");
-        //             // delay(1000);
-        //             // Serial.println((short)returnVector, HEX);
-
-        //             // returnVector[i] = value;
-        //             // returnVector[0] = value;
-
-        //             // #ifdef XL320Controller_DEBUG
-        //             // Serial.print("        - Controller::readv -> value set ");
-        //             // Serial.println(returnVector[i]);
-        //             // #endif
-   
-        //             break;
-        //         }
-        //     }
-
-        //     number++;
-        // }
-        // else
-        // {
-        //     #ifdef XL320Controller_DEBUG
-        //     Serial.print("        - Controller::readv -> echo ");
-        //     Serial.println( (int)pack.getInstruction() );
-        //     #endif            
-        // }
-    }
-    return number;
-}
-
-/* ============================================================================
- *
- * */
-void Controller::push(RegIndex index, int* values)
-{
-    // Prepare order
-    MultiOrder order;
-    order.type = Order::Type::Push;
-    order.idsSize = mSelectSize;
-    for(int i=0 ; i<mSelectSize ; i++)
-    {
-        order.ids[i] = mSelectIds[i];
-        order.data[i] = values[i];
-    }
-    order.index = index;
-    orderExec(&order);
-
-    // Read data from serial
-    receiveData(RxBaseTimeout);
-    dropRxData();
-}
-
-/* ============================================================================
- *
- * */
-void Controller::reset()
-{
-    // Prepare order
-    SimpleOrder order;
-    order.type = Order::Type::Reset;
-    order.id   = Constant::BroadcastId;
-    orderExec(&order);
-
-    // Read data from serial
-    receiveData(RxBaseTimeout);
-    dropRxData();
-}
-
-/* ============================================================================
- *
- * */
-void Controller::reboot()
-{
-    // Prepare order
-    SimpleOrder order;
-    order.type = Order::Type::Reboot;
-    order.id   = Constant::BroadcastId;
-    orderExec(&order);
-
-    // Read data from serial
-    receiveData(RxBaseTimeout);
-    dropRxData();
 }
