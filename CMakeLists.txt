@@ -7,9 +7,9 @@ OPTION(WOO_XL320_BUILD_APPS "Build test/demo apps for xl320" OFF)
 OPTION(WOO_XL320_DEBUG_LOG "Record full debug logs into a file" OFF)
 
 # - Enable debug logs
-if(WOO_XL320_DEBUG_LOG)
+IF(WOO_XL320_DEBUG_LOG)
 	ADD_DEFINITIONS(-DWOO_XL320_DEBUG_LOG)
-endif()
+ENDIF()
 
 # - Locale includes
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_LIST_DIR}/include)
@@ -26,21 +26,12 @@ INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS})
 # To display boost asio debug messages
 # ADD_DEFINITIONS(-DBOOST_ASIO_ENABLE_HANDLER_TRACKING)
 
-
-# - Qt
-# FIND_PACKAGE(Qt5 COMPONENTS Core SerialPort REQUIRED)
-# SET(CMAKE_AUTOMOC ON)
-# ADD_DEFINITIONS(
-#     ${Qt5Core_DEFINITIONS}
-#     ${Qt5SerialPort_DEFINITIONS}
-#)
-#INCLUDE_DIRECTORIES(
-#    ${Qt5Core_INCLUDE_DIRS}
-#    ${Qt5SerialPort_INCLUDE_DIRS}
-#    )
-
-# - 
+# - Build libs
 ADD_SUBDIRECTORY(lib)
-ADD_SUBDIRECTORY(app)
+
+# - Build apps if required
+IF(WOO_XL320_BUILD_APPS)
+    ADD_SUBDIRECTORY(app)
+ENDIF()
 
 MESSAGE("[out] ${CMAKE_CURRENT_LIST_FILE}")
