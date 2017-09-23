@@ -201,6 +201,13 @@ uint8_t Controller::pull(RegIndex index, uint16_t* returnVector)
     Serial.println(bsize);
     #endif
 
+    // Send packet
+    sendBuffer(buffer, bsize);
+
+    #ifdef Controller__ping_DEBUG
+    Serial.println("==== Controller::pull : data sent, wait for an answer");
+    #endif
+
     // Read data from serial
     receiveData(RxBaseTimeout);
 
@@ -209,6 +216,9 @@ uint8_t Controller::pull(RegIndex index, uint16_t* returnVector)
     Serial.print(mRxBufferSize);
     Serial.println(" bytes received");
     #endif
+
+    // Reset vector
+    for(uint8_t i=0 ; i<mSelectSize ; i++) { returnVector[i] = 0xFFFF; }    
 
     // Parse each packet
     number = 0;
@@ -266,11 +276,10 @@ uint8_t Controller::pull(RegIndex index, uint16_t* returnVector)
                     #endif
 
                     returnVector[i] = value;
+                    number++;
                     break;
                 }
             }
-
-            number++;
         }
         #ifdef Controller__pull_DEBUG
         else
@@ -297,7 +306,13 @@ uint8_t Controller::pull(RegIndex index, uint16_t* returnVector)
 void Controller::push(RegIndex index, uint16_t* values)
 {
     #ifdef Controller__push_DEBUG
-    Serial.println("==== Controller::push : begin");
+    Serial.print("==== Controller::push : begin(");
+    for(int i=0 ; i<mSelectSize ; i++)
+    {
+        if(i!=0) { Serial.print(", "); }
+        Serial.print((int)values[i]);
+    }
+    Serial.println(")");
     #endif
 
     // Prepare data buffer
@@ -312,9 +327,12 @@ void Controller::push(RegIndex index, uint16_t* values)
                             );
 
     #ifdef Controller__push_DEBUG
-    Serial.print("==== Controller::pull : data prepared size = ");
+    Serial.print("==== Controller::push : data prepared size = ");
     Serial.println(bsize);
     #endif
+
+    // Send packet
+    sendBuffer(buffer, bsize);
 
     // Read data from serial
     receiveData(RxBaseTimeout);

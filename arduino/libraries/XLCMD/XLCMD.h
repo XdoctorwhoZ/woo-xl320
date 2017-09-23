@@ -54,8 +54,8 @@ enum CmdIndex
 //! Stored data about each entry of the control table
 struct CmdInfo
 {
-    const char* name; // Name of the command
-    RegIndex    areg; // Associated register in the servo
+    const char*     name; // Name of the command
+    xl320::RegIndex areg; // Associated register in the servo
 };
 
 //! 
@@ -66,7 +66,7 @@ class Machine
     static const CmdInfo CmdInfoTable[CmdIndex::Total];
 
     //! Maximal number of servo xl-320 selectable at once
-    static constexpr byte CmdBufferSize = 128;
+    static constexpr uint8_t CmdBufferSize = 128;
 
     //! Stream to read commands and write status
     Stream* mStream;
@@ -93,12 +93,17 @@ public:
 private:
 
     //! Command parsing
-    void parse(const char* command);
+    void parse(char* command);
 
     //
-    void parse_command(const char* ptr);
-    void parse_command_getter();
-    void parse_command_setter();
+    void parse_command(char* ptr);
+    void parse_command_getter(char* ptr, CmdIndex index);
+    void parse_command_setter(char* ptr, CmdIndex index);
+
+    //! To send message back to user
+    void reply(const char* msg) { mStream->write(msg); }
+
+
 
 };
 

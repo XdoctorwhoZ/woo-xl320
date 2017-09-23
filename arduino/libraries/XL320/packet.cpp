@@ -212,10 +212,11 @@ void Packet::FillBPull(uint8_t* buffer, uint8_t size, uint8_t* ids, uint8_t idSi
 /* ============================================================================
  *
  * */
+// #define Packet__FillBPush_DEBUG
 void Packet::FillBPush( uint8_t* buffer, uint8_t size , uint8_t*  ids   , uint8_t idSize
                       , uint8_t  rAddr , uint8_t rSize, uint16_t* values)
 {
-    const int params_size = 4 + idSize;
+    const int params_size = 4 + idSize + (idSize*rSize);
 
     uint8_t params[params_size];
     params[0] = WordLoByte(rAddr);
@@ -223,23 +224,53 @@ void Packet::FillBPush( uint8_t* buffer, uint8_t size , uint8_t*  ids   , uint8_
     params[2] = WordLoByte(rSize);
     params[3] = WordHiByte(rSize);
     uint8_t next = 4;
-    for(int i=0 ; i<idSize ; i++)
+    for(uint8_t i=0 ; i<idSize ; i++)
     {
         params[next] = ids[i];
         next++;
+
         switch(rSize)
         {
             case 1:
             {
+                #ifdef Packet__FillBPush_DEBUG
+                Serial.print(">>>> Packet::FillBPush : size 1 : ");
+                Serial.println((int)values[i]);
+                #endif
+
                 params[next] = WordLoByte(values[i]);
+                #ifdef Packet__FillBPush_DEBUG
+                Serial.print(">>>> Packet::FillBPush : lo : ");
+                Serial.println((int)params[next]);
+                #endif
                 next++;
+
+                break;
             }
             case 2:
             {
-                params[next] = WordLoByte(values[i]);
+                uint16_t tmp = values[i];
+                
+                #ifdef Packet__FillBPush_DEBUG
+                Serial.print(">>>> Packet::FillBPush : size 2 : ");
+                Serial.println((int)tmp);
+                #endif
+
+                params[next] = WordLoByte(tmp);
+                #ifdef Packet__FillBPush_DEBUG
+                Serial.print(">>>> Packet::FillBPush : lo : ");
+                Serial.println((int)params[next]);
+                #endif
                 next++;
-                params[next] = WordHiByte(values[i]);
+
+                params[next] = WordHiByte(tmp);
+                #ifdef Packet__FillBPush_DEBUG
+                Serial.print(">>>> Packet::FillBPush : hi : ");
+                Serial.println((int)params[next]);
+                #endif
                 next++;
+
+                break;
             }
         }
     }

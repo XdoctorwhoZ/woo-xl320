@@ -48,25 +48,39 @@ void loop()
         // There will be one value per servo selected
         static uint16_t read_value[8];
 
-        controller.pull(xl320::RegIndex::ModelNumber, read_value);
         PC_SERIAL.print("#### ModelNumber: ");
-        PC_SERIAL.println((int)read_value[0]);
-        
-        controller.pull(xl320::RegIndex::Version, read_value);
+        if( controller.pull(xl320::RegIndex::ModelNumber, read_value) >= 1 )
+            PC_SERIAL.println((int)read_value[0]);
+        else
+            PC_SERIAL.println("???");
+
+
         PC_SERIAL.print("#### Version: ");
-        PC_SERIAL.println((int)read_value[0]);
+        if( controller.pull(xl320::RegIndex::Version, read_value) >= 1 )
+            PC_SERIAL.println((int)read_value[0]);
+        else
+            PC_SERIAL.println("???");
 
-        controller.pull(xl320::RegIndex::Id, read_value);
+
         PC_SERIAL.print("#### Id: ");
-        PC_SERIAL.println((int)read_value[0]);
+        if( controller.pull(xl320::RegIndex::Id, read_value) >= 1 )
+            PC_SERIAL.println((int)read_value[0]);
+        else
+            PC_SERIAL.println("???");
 
-        controller.pull(xl320::RegIndex::BaudRate, read_value);
+
         PC_SERIAL.print("#### BaudRate: ");
-        PC_SERIAL.println((int)read_value[0]);
+        if( controller.pull(xl320::RegIndex::BaudRate, read_value) >= 1 )
+            PC_SERIAL.println((int)read_value[0]);
+        else
+            PC_SERIAL.println("???");
 
-        controller.pull(xl320::RegIndex::PresentVoltage, read_value);
+
         PC_SERIAL.print("#### PresentVoltage: ");
-        PC_SERIAL.println((int)read_value[0]);
+        if( controller.pull(xl320::RegIndex::PresentVoltage, read_value) >= 1 )
+            PC_SERIAL.println((int)read_value[0]);
+        else
+            PC_SERIAL.println("???");
     }
 
     // Wait

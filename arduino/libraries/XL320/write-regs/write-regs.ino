@@ -23,72 +23,66 @@ void setup()
 //! Loop function
 void loop()
 {
-    PC_SERIAL.println("+ Ping");
+    PC_SERIAL.println("###");
+    PC_SERIAL.println("### START ###");
 
     // Get available servos
-    byte servoIds[xl320::Constant::SelectSizeMax];
-    byte numberOfServo = controller.ping(servoIds);
+    static uint8_t servoIds[xl320::Controller::SelectSizeMax];
+    static uint8_t numberOfServo; 
+    numberOfServo = controller.ping(servoIds);
     PC_SERIAL.print("    - Found ");
     PC_SERIAL.print((int)numberOfServo);
     PC_SERIAL.println(" servos");
 
-    // Read registers for each servos
-    for(int i=0 ; i<numberOfServo ; i++)
+    static uint16_t speed = 0;
+
+    //
+    for(uint8_t i=0 ; i<numberOfServo ; i++)
     {
-        PC_SERIAL.print("+ Write on servo ");
+        PC_SERIAL.print("+ Control servo ");
         PC_SERIAL.println(servoIds[i]);
 
         // Select the servo that we are going to read 
-        byte servo = servoIds[i];
+        uint8_t servo = servoIds[i];
         controller.selectServo(&servo, 1);
 
-        // Create a table for the read values
-        // There will be one value per servo selected
-        int values[numberOfServo];
+        // 
+        static uint16_t write_value[1];
 
+        // 
+        PC_SERIAL.print("+ Speed ");
+        PC_SERIAL.println((int)speed);
+        write_value[0] = speed;
+        controller.push(xl320::RegIndex::GoalSpeed, write_value);
+        speed = (speed+300)%1023;
 
+        //
+        delay(1000);
 
-        // controller.pull(xl320::RegIndex::ReturnDelayTime, values);
-        // PC_SERIAL.print("    - ReturnDelayTime: ");
-        // PC_SERIAL.println(values[0]);
-                              
-        // controller.pull(xl320::RegIndex::CwAngleLimit, values);
-        // PC_SERIAL.print("    - CwAngleLimit: ");
-        // PC_SERIAL.println(values[0]);
+        //
+        PC_SERIAL.println("+ Set pos 0");
+        write_value[0] = 0;
+        controller.push(xl320::RegIndex::GoalPosition, write_value);
 
-        // controller.pull(xl320::RegIndex::CcwAngleLimit, values);
-        // PC_SERIAL.print("    - CcwAngleLimit: ");
-        // PC_SERIAL.println(values[0]);
-           
-        // controller.pull(xl320::RegIndex::ControlMode, values);
-        // PC_SERIAL.print("    - ControlMode: ");
-        // PC_SERIAL.println(values[0]);
+        //
+        delay(3000);
 
+        //
+        PC_SERIAL.println("+ Set pos 512");
+        write_value[0] = 512;
+        controller.push(xl320::RegIndex::GoalPosition, write_value);
 
+        //
+        delay(3000);
 
-                   
-        // controller.pull(xl320::RegIndex::TorqueEnable, values);
-        // PC_SERIAL.print("    - TorqueEnable: ");
-        // PC_SERIAL.println(values[0]); 
-
-        // controller.pull(xl320::RegIndex::Led, values);
-        // PC_SERIAL.print("    - Led: ");
-        // PC_SERIAL.println(values[0]);                   
-
-
-        // controller.pull(xl320::RegIndex::GoalPosition, values);
-        // PC_SERIAL.print("    - GoalPosition: ");
-        // PC_SERIAL.println(values[0]);
-
-        // controller.pull(xl320::RegIndex::GoalSpeed, values);
-        // PC_SERIAL.print("    - GoalSpeed: ");
-        // PC_SERIAL.println(values[0]);
-
-
-
+        //
+        PC_SERIAL.println("+ Set pos 1023");
+        write_value[0] = 1023;
+        controller.push(xl320::RegIndex::GoalPosition, write_value);
 
     }
 
-    // Wait 10sec
-    delay(10000);
+    // Wait
+    PC_SERIAL.println("===================================================");
+    delay(3 * 1000);
 }

@@ -13,11 +13,12 @@ using namespace xlcmd;
 const CmdInfo Machine::CmdInfoTable[CmdIndex::Total] = {
     { "XBAUD"          , xl320::RegIndex::Total                  } , // XBaud                       
     { "PING"           , xl320::RegIndex::Total                  } , // Ping                        
-    { "SEL"            , xl320::RegIndex::Total                  } , // Select                      
+    { "SEL"            , xl320::RegIndex::Total                  } , // Select 
+
     { "MODEL"          , xl320::RegIndex::ModelNumber            } , // ModelNumber                 
     { "VERSION"        , xl320::RegIndex::Version                } , // Version                     
     { "ID"             , xl320::RegIndex::Id                     } , // Id                          
-    { "BAUD"           , xl320::RegIndex::Baud                   } , // Baud                        
+    { "BAUD"           , xl320::RegIndex::BaudRate               } , // BaudRate                        
     { "RDT"            , xl320::RegIndex::ReturnDelayTime        } , // ReturnDelayTime             
     { "ANG_LIM_MIN"    , xl320::RegIndex::CwAngleLimit           } , // CwAngleLimit                
     { "ANG_LIM_MAX"    , xl320::RegIndex::CcwAngleLimit          } , // CcwAngleLimit               
@@ -28,6 +29,7 @@ const CmdInfo Machine::CmdInfoTable[CmdIndex::Total] = {
     { "MAX_TORQUE"     , xl320::RegIndex::MaxTorque              } , // MaxTorque                   
     { "RET_LEVEL"      , xl320::RegIndex::ReturnLevel            } , // ReturnLevel                 
     { "ALARM"          , xl320::RegIndex::AlarmShutdown          } , // AlarmShutdown               
+
     { "TORQUE_ENABLE"  , xl320::RegIndex::TorqueEnable           } , // TorqueEnable                
     { "LED"            , xl320::RegIndex::Led                    } , // Led                         
     { "DGAIN"          , xl320::RegIndex::Dgain                  } , // Dgain                       
@@ -44,7 +46,7 @@ const CmdInfo Machine::CmdInfoTable[CmdIndex::Total] = {
     { "REG_INSTRU"     , xl320::RegIndex::RegisteredInstruction  } , // RegisteredInstruction       
     { "MOVING"         , xl320::RegIndex::Moving                 } , // Moving                      
     { "HARDWARE_ERROR" , xl320::RegIndex::HardwareError          } , // HardwareError               
-    { "PUNCH"          , xl320::RegIndex::Punch                  } , // Punch                       
+    { "PUNCH"          , xl320::RegIndex::Punch                  } , // Punch  
 };
 
 /* ============================================================================
@@ -62,6 +64,7 @@ void Machine::setup(Stream& cmdStream, xl320::Controller::XlSerial& xlSerial)
 {
     mStream = &cmdStream;
     mController.setup(xlSerial);
+    mController.setXlBaudRate(115200);
 }
 
 /* ============================================================================
@@ -69,12 +72,17 @@ void Machine::setup(Stream& cmdStream, xl320::Controller::XlSerial& xlSerial)
  * */
 void Machine::loop()
 {
-    auto addCmdChar = [](char c)
+    auto addCmdChar = [this](char c)
     {
-        if( (mCmdPtr-mCmdBuffer) < MaxCmdSize )
+        if( (mCmdPtr-mCmdBuffer) < CmdBufferSize )
         {
             *mCmdPtr = c; mCmdPtr++;
         }
+    };
+
+    auto rstCmdPtr = [this]()
+    {
+        mCmdPtr = mCmdBuffer;
     };
 
     // Get input char and parse if needed
@@ -94,14 +102,14 @@ void Machine::loop()
 /* ============================================================================
  *
  * */
-void Machine::parse(const char* command)
+void Machine::parse(char* command)
 {
-    const char* ptr = command;
+    char* ptr = command;
 
     // Check XL header
-    if (*ptr != 'X') { syntaxError("Missing header char X."); return; }
+    if (*ptr != 'X') { reply("Missing header char X.\r\n"); return; }
     ptr++;
-    if (*ptr != 'X') { syntaxError("Missing header char .L"); return; }
+    if (*ptr != 'L') { reply("Missing header char .L\r\n"); return; }
     ptr++;
 
     // Parse command
@@ -112,9 +120,9 @@ void Machine::parse(const char* command)
     }
     else // case XL\r\n
     {
-        if (*ptr != '\r') { syntaxError("Missing terminator \\r."); return; }
+        if (*ptr != '\r') { reply("Missing terminator \\r.\r\n"); return; }
         ptr++;
-        if (*ptr != '\n') { syntaxError("Missing terminator .\\n"); return; }
+        if (*ptr != '\n') { reply("Missing terminator .\\n\r\n"); return; }
         ptr++;
         reply("OK\r\n");
     }
@@ -123,7 +131,7 @@ void Machine::parse(const char* command)
 /* ============================================================================
  *
  * */
-void Machine::parse_command(const char* ptr)
+void Machine::parse_command(char* ptr)
 {
     // Get string limits
     const char* cmdbeg = ptr;
@@ -131,114 +139,105 @@ void Machine::parse_command(const char* ptr)
 
     char save = *ptr;
     *ptr = '\0';
-    String stringTwo =  String("This is a string");
+    String cmd_str =  String(cmdbeg);
+    ptr++;
+    
+    CmdIndex index;
+    for (uint16_t i=0 ; i<CmdIndex::Total ; i++)
+    {
+        if(cmd_str == CmdInfoTable[i].name)
+        {
+            index = (CmdIndex)i;
+        }
+    }
 
-        // // Interpret string
-        // XxCmd::Value cmd = XxCmd::GetValueFromName(cmdbeg, ptr);
-        // if (cmd == XxCmd::Total) {
-        //     syntaxError(); return;
-        // }
+    // Check if this is a getter of setters function
+    if (save != '?' && save != '=')
+    {
+        reply("Missing indicator ? or ="); return;
+    }
 
-        // // Check if this is a getter of setters function
-        // if (*ptr != '?' && *ptr != '=') {
-        //     syntaxError("need ? or ="); return;
-        // }
+    // Getter command
+    if (save == '?')
+    {
+        parse_command_getter(ptr, index);
+    }
+    else
+    {
+        // parse_command_setter(ptr);
+    }
 
-        // // Getter command
-        // if (*ptr == '?')
-        // {
-        //     // execute command XX+CMD?
-        //     switch(cmd)
-        //     {
-        //         case XxCmd::XBaud                   : cmdXbaudGetter();                 break;
-        //         case XxCmd::Ping                    : cmdPingGetter();                  break;
-        //         case XxCmd::Select                  : cmdSelectGetter();                break;
-
-        //         case XxCmd::ModelNumber             : cmdModelNumberGetter();           break;
-        //         case XxCmd::Version                 : cmdVersionGetter();               break;
-        //         case XxCmd::Id                      : cmdIdGetter();                    break;
-        //         case XxCmd::Baud                    : cmdBaudGetter();                  break;
-        //         case XxCmd::ReturnDelayTime         : cmdReturnDelayTimeGetter();       break;
-        //         case XxCmd::CwAngleLimit            : cmdCwAngleLimitGetter();          break;
-        //         case XxCmd::CcwAngleLimit           : cmdCcwAngleLimitGetter();         break;
-        //         case XxCmd::ControlMode             : cmdControlModeGetter();           break;
-        //         case XxCmd::LimitTemperature        : cmdLimitTemperatureGetter();      break;
-        //         case XxCmd::DownLimitVoltage        : cmdDownLimitVoltageGetter();      break;
-        //         case XxCmd::UpLimitVoltage          : cmdUpLimitVoltageGetter();        break;
-        //         case XxCmd::MaxTorque               : cmdMaxTorqueGetter();             break;
-        //         case XxCmd::ReturnLevel             : cmdReturnLevelGetter();           break;
-        //         case XxCmd::AlarmShutdown           : cmdAlarmShutdownGetter();         break;
-        //         case XxCmd::TorqueEnable            : cmdTorqueEnableGetter();          break;
-        //         case XxCmd::Led                     : cmdLedGetter();                   break;
-        //         case XxCmd::Dgain                   : cmdDgainGetter();                 break;
-        //         case XxCmd::Igain                   : cmdIgainGetter();                 break;
-        //         case XxCmd::Pgain                   : cmdPgainGetter();                 break;
-        //         case XxCmd::GoalPosition            : cmdGoalPositionGetter();          break;
-        //         case XxCmd::GoalSpeed               : cmdGoalSpeedGetter();             break;
-        //         case XxCmd::GoalTorque              : cmdGoalTorqueGetter();            break;
-        //         case XxCmd::PresentPosition         : cmdPresentPositionGetter();       break;
-        //         case XxCmd::PresentSpeed            : cmdPresentSpeedGetter();          break;
-        //         case XxCmd::PresentLoad             : cmdPresentLoadGetter();           break;
-        //         case XxCmd::PresentVoltage          : cmdPresentVoltageGetter();        break;
-        //         case XxCmd::PresentTemperature      : cmdPresentTemperatureGetter();    break;
-        //         case XxCmd::RegisteredInstruction   : cmdRegisteredInstructionGetter(); break;
-        //         case XxCmd::Moving                  : cmdMovingGetter();                break;
-        //         case XxCmd::HardwareError           : cmdHardwareErrorGetter();         break;
-        //         case XxCmd::Punch                   : cmdPunchGetter();                 break;
-
-        //         default                             : syntaxError("unknown");
-        //     }
-        // }
-        // // Setter command XX+CMD=...
-        // else
-        // {
-        //     // skip '='
-        //     ptr++;
-
-        //     // execute command
-        //     switch(cmd)
-        //     {
-        //         case XxCmd::XBaud                   : cmdXbaudSetter(ptr) ;                     break;
-        //         case XxCmd::Select                  : cmdSelectSetter(ptr);                     break;
-
-        //         case XxCmd::Id                      : cmdIdSetter(ptr);                         break;
-        //         case XxCmd::Baud                    : cmdBaudSetter(ptr);                       break;
-        //         case XxCmd::ReturnDelayTime         : cmdReturnDelayTimeSetter(ptr);            break;
-        //         case XxCmd::CwAngleLimit            : cmdCwAngleLimitSetter(ptr);               break;
-        //         case XxCmd::CcwAngleLimit           : cmdCcwAngleLimitSetter(ptr);              break;
-        //         case XxCmd::ControlMode             : cmdControlModeSetter(ptr);                break;
-        //         case XxCmd::LimitTemperature        : cmdLimitTemperatureSetter(ptr);           break;
-        //         case XxCmd::DownLimitVoltage        : cmdDownLimitVoltageSetter(ptr);           break;
-        //         case XxCmd::UpLimitVoltage          : cmdUpLimitVoltageSetter(ptr);             break;
-        //         case XxCmd::MaxTorque               : cmdMaxTorqueSetter(ptr);                  break;
-        //         case XxCmd::ReturnLevel             : cmdReturnLevelSetter(ptr);                break;
-        //         case XxCmd::AlarmShutdown           : cmdAlarmShutdownSetter(ptr);              break;
-        //         case XxCmd::TorqueEnable            : cmdTorqueEnableSetter(ptr);               break;
-        //         case XxCmd::Led                     : cmdLedSetter(ptr);                        break;
-        //         case XxCmd::Dgain                   : cmdDgainSetter(ptr);                      break;
-        //         case XxCmd::Igain                   : cmdIgainSetter(ptr);                      break;
-        //         case XxCmd::Pgain                   : cmdPgainSetter(ptr);                      break;
-        //         case XxCmd::GoalPosition            : cmdGoalPositionSetter(ptr);               break;
-        //         case XxCmd::GoalSpeed               : cmdGoalSpeedSetter(ptr);                  break;
-        //         case XxCmd::GoalTorque              : cmdGoalTorqueSetter(ptr);                 break;
-        //         case XxCmd::Punch                   : cmdPunchSetter(ptr);                      break;
-        //         default                             : syntaxError("unknown");                   break;
-        //     }
-        // }
 }
 
 /* ============================================================================
  *
  * */
-void Machine::parse_command_getter()
+void Machine::parse_command_getter(char* ptr, CmdIndex index)
 {
+    switch(index)
+    {
+        case XBaud:
+        {
 
+            String ret = "xbaud={";
+            
+
+            ret += "}\r\n";
+            reply(ret.c_str());
+            break;
+        }
+        case Ping:
+        {
+            uint8_t servoIds[xl320::Controller::SelectSizeMax];
+            uint8_t numberOfServo; 
+            numberOfServo = mController.ping(servoIds);
+            String ret = "ping={";
+            for(uint8_t i=0 ; i<numberOfServo ; i++)
+            {
+                if(i!=0) { ret += ", "; }
+                ret += servoIds[i];
+            }
+            ret += "}\r\n";
+            reply(ret.c_str());
+            break;
+        }
+        case Select:
+        {
+            String ret = "select={";
+            for(uint8_t i=0 ; i<mController.getSelectSize() ; i++)
+            {
+                if(i!=0) { ret += ", "; }
+                ret += (int)mController.getSelectIds()[i];
+            }
+            ret += "}\r\n";
+            reply(ret.c_str());
+            break;
+        }
+        default:
+        {
+            String ret = CmdInfoTable[index].name;
+            ret += "={";
+            uint16_t read_value[xl320::Controller::SelectSizeMax];
+            uint8_t nb = mController.pull(CmdInfoTable[index].areg, read_value);
+            for(uint8_t i=0 ; i<mController.getSelectSize() ; i++)
+            {
+                if(i!=0) { ret += ", "; }
+                if( read_value[i] != 0xFFFF )
+                    ret += (int)read_value[i];
+                else
+                    ret += "???";
+            }
+            ret += "}\r\n";
+            reply(ret.c_str());
+            break;
+        }
+    }
 }
 
 /* ============================================================================
  *
  * */
-void Machine::parse_command_setter()
+void Machine::parse_command_setter(char* ptr, CmdIndex index)
 {
 
 }

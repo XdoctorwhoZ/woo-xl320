@@ -12,11 +12,11 @@ void setup()
 {
     PC_SERIAL.begin(PC_BAUDRATE);
     mMachine.setup(PC_SERIAL, XL_SERIAL);
+    PC_SERIAL.println("=== XL CMD MACHINE ===");
 }
 
 //! Loop function
 void loop()
 {
-    PC_SERIAL.println("=== XL CMD MACHINE ===");
     mMachine.loop();
 }

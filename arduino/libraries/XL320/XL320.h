@@ -162,7 +162,7 @@ public:
     typedef uint32_t baudrate_t;
 
     //! Maximal number of servo xl-320 selectable at once
-    static constexpr uint8_t SelectSizeMax = 8;
+    static constexpr uint8_t SelectSizeMax = 5;
 
 private:
 
