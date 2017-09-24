@@ -49,5 +49,5 @@ void loop()
     }
 
     // test with 1s delay
-    delay(1000);
+    // delay(1000);
 }
