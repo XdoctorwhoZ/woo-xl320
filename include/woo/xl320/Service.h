@@ -52,6 +52,7 @@ private:
     typedef boost::asio::serial_port            AsioSerialPort;
     typedef std::chrono::milliseconds           Milliseconds;
     typedef std::chrono::high_resolution_clock  HrClock;
+    typedef std::shared_ptr<Order>              OrderPtr;
     typedef std::shared_ptr<Servo>              ServoPtr;
     typedef std::shared_ptr<std::thread>        ThreadPtr;
     typedef std::shared_ptr<AsioServiceWork>    AsioServiceWorkPtr;
@@ -86,7 +87,7 @@ private:
     //! Commands that must be send
     std::queue<Command> mCommandQueue;
     //! Command currently executed
-    Command::Order      mOrderCurrent;
+    OrderPtr            mOrderCurrent;
     Command             mCommandCurrent;
     //! Timer to stop command that does not end alone
     AsioTimer           mOrderTimeout;

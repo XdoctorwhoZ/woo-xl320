@@ -157,14 +157,14 @@ void Servo::pull(const std::list<RegisterIndex>& indexes)
     // Prepare command
     Command command;
 
-    // Append order for each pull request
-    for(auto index : indexes)
-    {
-        const RegisterEntry& entry = RegisterMap[index];
-        log()   << "    - Add order(pull, " << (int)mId << ", "
-                << (int)entry.address << ", " << (int)entry.size << ")";
-        command << Command::Order(Command::Type::pull, mId, entry.address, entry.size);
-    }
+    // // Append order for each pull request
+    // for(auto index : indexes)
+    // {
+    //     const RegisterEntry& entry = RegisterMap[index];
+    //     log()   << "    - Add order(pull, " << (int)mId << ", "
+    //             << (int)entry.address << ", " << (int)entry.size << ")";
+    //     command << Command::Order(Command::Type::pull, mId, entry.address, entry.size);
+    // }
 
     // Finally register command
     mService->registerCommand( command );
@@ -239,20 +239,20 @@ void Servo::push()
     // Prepare command
     Command command;
 
-    // Append order for each push request
-    while(!mRequestedPush.empty())
-    {
-        PushEntry pentry = mRequestedPush.front();
-        const RegisterEntry& entry = RegisterMap[pentry.index];
+    // // Append order for each push request
+    // while(!mRequestedPush.empty())
+    // {
+    //     PushEntry pentry = mRequestedPush.front();
+    //     const RegisterEntry& entry = RegisterMap[pentry.index];
 
-        // log
-        log()   << "    - Add order(push, " << (int)mId << ", "
-                << (int)entry.address << ", " << (int)entry.size << ", " << (int)pentry.data << ")";
+    //     // log
+    //     log()   << "    - Add order(push, " << (int)mId << ", "
+    //             << (int)entry.address << ", " << (int)entry.size << ", " << (int)pentry.data << ")";
 
-        // Append order
-        command << Command::Order(Command::Type::push, mId, entry.address, entry.size, pentry.data);
-        mRequestedPush.pop();
-    }
+    //     // Append order
+    //     command << Command::Order(Command::Type::push, mId, entry.address, entry.size, pentry.data);
+    //     mRequestedPush.pop();
+    // }
 
     // Finally register command
     mService->registerCommand( command );

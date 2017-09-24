@@ -62,8 +62,8 @@ void testMachineState()
         {
             cout << "+ State 2" << endl;
             cout << *servo << endl;
-            // servo->pullAll();
-            servo->pull(woo::xl320::Servo::RegisterIndex::PresentPosition);
+            servo->pullAll();
+            // servo->pull(woo::xl320::Servo::RegisterIndex::PresentPosition);
             break;
         }
         case 3:

@@ -7,41 +7,6 @@ using namespace woo::xl320;
 /* ============================================================================
  *
  * */
-void Packet::Build(std::vector<uint8_t>& data, uint8_t id, Instruction instruction, int params_size, ...)
-{
-    // Resize buffer to be able to contains the all message
-    uint16_t bufferSize = ComputeBufferSize(params_size);
-    data.resize(bufferSize);
-
-    // Packet length after header
-    uint16_t packetLength = 1 + 2 + params_size;
-
-    data[0] = Constant::Header0;
-    data[1] = Constant::Header1;
-    data[2] = Constant::Header2;
-    data[3] = Constant::Reserve;
-    data[4] = id;
-    data[5] = WordLoByte(packetLength);
-    data[6] = WordHiByte(packetLength);
-    data[7] = (uint8_t)instruction;
-
-    va_list args;
-    va_start(args, params_size); 
-    for(int i=0 ; i<params_size ; i++)
-    {
-        uint8_t arg = va_arg(args, int);
-        data[8+i] = arg;
-    }
-    va_end(args);
-
-    uint16_t crc = UpdateCRC(0, (uint8_t*)data.data(), bufferSize-2);
-    data[8+params_size]=WordLoByte(crc);
-    data[9+params_size]=WordHiByte(crc);
-}
-
-/* ============================================================================
- *
- * */
 void Packet::Build(std::vector<uint8_t>& data, uint8_t id, Instruction instruction, const std::vector<uint8_t>& params)
 {
     // Resize buffer to be able to contains the all message
@@ -51,10 +16,10 @@ void Packet::Build(std::vector<uint8_t>& data, uint8_t id, Instruction instructi
     // Packet length after header
     uint16_t packetLength = 1 + 2 + params.size();
 
-    data[0] = Constant::Header0;
-    data[1] = Constant::Header1;
-    data[2] = Constant::Header2;
-    data[3] = Constant::Reserve;
+    data[0] = Header0;
+    data[1] = Header1;
+    data[2] = Header2;
+    data[3] = Reserve;
     data[4] = id;
     data[5] = WordLoByte(packetLength);
     data[6] = WordHiByte(packetLength);

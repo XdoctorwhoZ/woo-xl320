@@ -2,7 +2,9 @@
 #include <Arduino.h>
 
 #define PC_SERIAL Serial
+#define PC_BAUDRATE 115200
 #define XL_SERIAL Serial3
+#define XL_BAUDRATE 115200
 
 //!
 #define READ_BUFFER_SIZE 128
@@ -11,8 +13,8 @@ byte ReadBuffer[READ_BUFFER_SIZE];
 //! Setup function
 void setup()
 {
-    PC_SERIAL.begin(115200);
-    XL_SERIAL.begin(115200);
+    PC_SERIAL.begin(PC_BAUDRATE);
+    XL_SERIAL.begin(XL_BAUDRATE);
 }
 
 //! Loop function
@@ -47,7 +49,4 @@ void loop()
         // Send it directly to PC
         PC_SERIAL.write(ReadBuffer, readSize);
     }
-
-    // test with 1s delay
-    // delay(1000);
 }

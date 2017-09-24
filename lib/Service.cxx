@@ -137,7 +137,7 @@ void Service::sendPing()
     log() << "+ Service::sendPing()";
 
     // Prepare command with only ping order then register it
-    registerCommand( Command() << Command::Order(Command::Type::ping) );
+    // registerCommand( Command() << Command::Order(Command::Type::ping) );
 }
 
 /* ============================================================================
@@ -257,25 +257,25 @@ void Service::commandStateMachine()
         mOrderCurrent = mCommandCurrent.extract();
 
         // Reset ping result if it is an other ping command
-        if(mOrderCurrent.type == Command::Type::ping)
-        {
-            mPingMutex.lock();
-            mPingResult.clear();
-            mPingMutex.unlock();
-        }
+        // if(mOrderCurrent.type == Command::Type::ping)
+        // {
+        //     mPingMutex.lock();
+        //     mPingResult.clear();
+        //     mPingMutex.unlock();
+        // }
 
         // Get packet from the order
-        auto data = mOrderCurrent.toByteArray();
+        // auto data = mOrderCurrent.toByteArray();
 
         // log
-        log() << "    - Command sent: " << ByteVector2HexStr(data);
+        // log() << "    - Command sent: " << ByteVector2HexStr(data);
 
-        // Send command packet
-        mPort->write_some( boost::asio::buffer(data, data.size()) );
+        // // Send command packet
+        // mPort->write_some( boost::asio::buffer(data, data.size()) );
 
-        // Start timeout timer
-        mOrderTimeout.expires_from_now( boost::posix_time::milliseconds(OrderTimeout) );
-        mOrderTimeout.async_wait( boost::bind(&Service::endOrder, this) );
+        // // Start timeout timer
+        // mOrderTimeout.expires_from_now( boost::posix_time::milliseconds(OrderTimeout) );
+        // mOrderTimeout.async_wait( boost::bind(&Service::endOrder, this) );
     }
 }
 
@@ -456,15 +456,15 @@ void Service::parsePacket()
  * */
 void Service::processPacket(const Packet& pack)
 {
-    log() << "+ Service::processPacket(" << pack << ")";
+    // log() << "+ Service::processPacket(" << pack << ")";
 
-    switch(mOrderCurrent.type)
-    {
-        case Command::Type::none: break;
-        case Command::Type::ping: processPacket_Ping(pack); break;
-        case Command::Type::pull: processPacket_Pull(pack); break;
-        case Command::Type::push: processPacket_Push(pack); break;
-    }
+    // switch(mOrderCurrent.type)
+    // {
+    //     case Command::Type::none: break;
+    //     case Command::Type::ping: processPacket_Ping(pack); break;
+    //     case Command::Type::pull: processPacket_Pull(pack); break;
+    //     case Command::Type::push: processPacket_Push(pack); break;
+    // }
 }
 
 /* ============================================================================
@@ -474,12 +474,12 @@ void Service::processPacket_Ping(const Packet& pack)
 {
     switch(pack.getInstruction())
     {
-        case Packet::Instruction::InsPing:
+        case Instruction::Ping:
         {
             log() << "ping echo";
             break;
         }
-        case Packet::Instruction::InsStatus:
+        case Instruction::Status:
         {
             // each packet received is a servo that give its ID
             uint8_t id = pack.getId();
@@ -511,24 +511,24 @@ void Service::processPacket_Pull(const Packet& pack)
 {
     switch(pack.getInstruction())
     {
-        case Packet::Instruction::InsRead:
+        case Instruction::Read:
         {
             log() << "    - Pull command echo";
             break;
         }
-        case Packet::Instruction::InsStatus:
+        case Instruction::Status:
         {
             // Get id and log
             uint8_t id = pack.getId();
             log() << "    - Pull answer for servo " << (int)id;
 
             // Update servo data
-            Servo* servo = getServo(id);
-            Servo::RegisterIndex index = Servo::RegisterAddr2RegisterIndex( mOrderCurrent.addr );
-            servo->update( index, pack.getReadValue() );
+            // Servo* servo = getServo(id);
+            // Servo::RegisterIndex index = Servo::RegisterAddr2RegisterIndex( mOrderCurrent.addr );
+            // servo->update( index, pack.getReadValue() );
 
             // Terminate order normally
-            endOrder();
+            // endOrder();
             break;
         }
         default:
@@ -546,12 +546,12 @@ void Service::processPacket_Push(const Packet& pack)
 {
     switch(pack.getInstruction())
     {
-        case Packet::Instruction::InsWrite:
+        case Instruction::Write:
         {
             log() << "    - Push command echo";
             break;
         }
-        case Packet::Instruction::InsStatus:
+        case Instruction::Status:
         {
             log() << "    - Push answer";
             // Terminate order normally

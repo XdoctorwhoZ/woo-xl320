@@ -4,32 +4,32 @@
 
 // woo
 #include "Log.h"
+#include "Types.h"
 
 // std
 #include <vector>
 #include <cstdarg>
-#include <cstdint>
 #include <iostream>
 
 // ---
 namespace woo { namespace xl320 {
+
 
 //! Packet manager
 //!
 class Packet
 {
 
+    // Constant value definitions
+    static constexpr uint8_t Header0        = 0xFF;
+    static constexpr uint8_t Header1        = 0xFF;
+    static constexpr uint8_t Header2        = 0xFD;
+    static constexpr uint8_t Reserve        = 0x00;
+
 public:
     
-    //! Constant value definitions
-    struct Constant
-    {
-        static constexpr uint8_t Header0        = 0xFF;
-        static constexpr uint8_t Header1        = 0xFF;
-        static constexpr uint8_t Header2        = 0xFD;
-        static constexpr uint8_t Reserve        = 0x00;
-        static constexpr uint8_t BroadcastId    = 0xFE;
-    };
+    // Constant value definitions
+    static constexpr uint8_t BroadcastId    = 0xFE;
 
     //! Return value for the function that validate packet structure
     enum PacketState
@@ -37,23 +37,6 @@ public:
         PsValid       = 0x1 ,
         PsBadHeader   = 0x2 ,
         PsBadCrc      = 0x3 ,
-    };
-
-    //! Available instructions
-    enum Instruction
-    {
-        InsPing            = 0x01 , // Instruction that checks whether the Packet has arrived to a device with the same ID as Packet ID
-        InsRead            = 0x02 , // Instruction to read data from the Device
-        InsWrite           = 0x03 , // Instruction to write data on the Device
-        InsRegWrite        = 0x04 , // Instruction that registers the Instruction Packet to a standby status; Packet is later executed through the Action command
-        InsAction          = 0x05 , // Instruction that executes the Packet that was registered beforehand using Reg Write
-        InsFactoryReset    = 0x06 , // Instruction that resets the Control Table to its initial factory default settings
-        InsReboot          = 0x08 , // Instruction to reboot the Device
-        InsStatus          = 0x55 , // (85) Return Instruction for the Instruction Packet
-        InsSyncRead        = 0x82 , // For multiple devices, Instruction to read data from the same Address with the same length at once
-        InsSyncWrite       = 0x83 , // For multiple devices, Instruction to write data on the same Address with the same length at once
-        InsBulkRead        = 0x92 , // For multiple devices, Instruction to read data from different Addresses with different lengths at once
-        InsBulkWrite       = 0x93 , // For multiple devices, Instruction to write data on different Addresses with different lengths at once
     };
 
     //! Function to compute the requested size of the buffer for a given number of params
@@ -64,8 +47,8 @@ public:
     static int ComputeBufferSize(int params_size) { return 7 + 1 + 2 + params_size; }
 
     // Helper functions
-    static inline uint8_t WordLoByte(uint16_t w) { return (uint8_t) (w & 0xff); }
-    static inline uint8_t WordHiByte(uint16_t w) { return (uint8_t) ((w >> 8) & 0xff); }
+    static inline uint8_t  WordLoByte(uint16_t w) { return (uint8_t) (w & 0xff); }
+    static inline uint8_t  WordHiByte(uint16_t w) { return (uint8_t) ((w >> 8) & 0xff); }
     static inline uint16_t MakeWord(uint8_t lo, uint8_t hi) { return (uint16_t)( ((uint16_t)lo) | (((uint16_t)hi)<<8) ); }
 
     //! Function to compute crc16 for dynamixel
@@ -83,8 +66,7 @@ public:
     Packet(const uint8_t* data = 0, uint32_t size = 0) : mData(data), mDataSize(size) { }
 
     //! Build a packet with the following data
-    static void Build(std::vector<uint8_t>& data, uint8_t id, Instruction instruction, int params_size, ...);
-    static void Build(std::vector<uint8_t>& data, uint8_t id, Instruction instruction, const std::vector<uint8_t>& params);
+    static void Build(std::vector<uint8_t>& data, uint8_t id, Instruction instruction, const std::vector<uint8_t>& params = std::vector<uint8_t>());
 
     // Basic getters
     uint8_t     getId()             const { return mData[4]; }
@@ -98,8 +80,8 @@ public:
     {
         switch(getParameterCount())
         {
-            case 2: return MakeWord(mData[9], 0);
-            case 3: return MakeWord(mData[9], mData[10]);
+            case 2:  return MakeWord(mData[9], 0);
+            case 3:  return MakeWord(mData[9], mData[10]);
             default: return 42;
         }
     }
