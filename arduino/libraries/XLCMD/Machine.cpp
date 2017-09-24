@@ -142,13 +142,20 @@ void Machine::parse_command(char* ptr)
     String cmd_str =  String(cmdbeg);
     ptr++;
     
+    bool found = false;
     CmdIndex index;
     for (uint16_t i=0 ; i<CmdIndex::Total ; i++)
     {
         if(cmd_str == CmdInfoTable[i].name)
         {
             index = (CmdIndex)i;
+            found = true;
         }
+    }
+
+    if (!found)
+    {
+        reply("Unknow command"); return;
     }
 
     // Check if this is a getter of setters function
@@ -164,9 +171,8 @@ void Machine::parse_command(char* ptr)
     }
     else
     {
-        // parse_command_setter(ptr);
+        parse_command_setter(ptr, index);
     }
-
 }
 
 /* ============================================================================
@@ -178,10 +184,8 @@ void Machine::parse_command_getter(char* ptr, CmdIndex index)
     {
         case XBaud:
         {
-
             String ret = "xbaud={";
-            
-
+            ret += mController.getXlBaudRate();
             ret += "}\r\n";
             reply(ret.c_str());
             break;
@@ -239,5 +243,91 @@ void Machine::parse_command_getter(char* ptr, CmdIndex index)
  * */
 void Machine::parse_command_setter(char* ptr, CmdIndex index)
 {
+    XxArgParser arg_parser(ptr);
 
+    switch(index)
+    {
+        case XBaud:
+        {
+            uint32_t argv[xl320::Controller::SelectSizeMax];
+            uint8_t  argc = arg_parser.toIntList<uint32_t>(argv);
+
+            mController.setXlBaudRate(argv[0]);
+            String ret = "set xbaud={";
+            ret += mController.getXlBaudRate();
+            ret += "}\r\n";
+            reply(ret.c_str());
+            break;
+        }
+        case Ping:
+        {
+            reply("set ping?\r\n");
+            break;
+        }
+        case Select:
+        {
+            uint8_t  argv[xl320::Controller::SelectSizeMax];
+            uint8_t  argc = arg_parser.toIntList<uint8_t>(argv);
+
+            mController.selectServo(argv, argc);
+            String ret = "set select={";
+            for(uint8_t i=0 ; i<mController.getSelectSize() ; i++)
+            {
+                if(i!=0) { ret += ", "; }
+                ret += (int)mController.getSelectIds()[i];
+            }
+            ret += "}\r\n";
+            reply(ret.c_str());
+            break;
+        }
+        default:
+        {
+            uint16_t argv[xl320::Controller::SelectSizeMax];
+            uint8_t  argc = arg_parser.toIntList<uint16_t>(argv);
+
+            mController.push(CmdInfoTable[index].areg, argv);
+
+            String ret = "set "; 
+            ret += CmdInfoTable[index].name;
+            ret += "={";
+            for(uint8_t i=0 ; i<mController.getSelectSize() ; i++)
+            {
+                if(i!=0) { ret += ", "; }
+                ret += (int)argv[i];
+            }
+            ret += "}\r\n";
+            reply(ret.c_str());
+            break;
+        }
+    }
+}
+
+/* ============================================================================
+ *
+ * */
+uint8_t XxArgParser::getNextArg(char* arg)
+{
+    // Check if there is more
+    if(*mPtr == '\r' || *mPtr == '\n' || *mPtr == '\0')
+    {
+        *arg = '\0';
+        // Serial.println("return 0");            
+        return 0;
+    }
+
+    // Skip ','
+    if(*mPtr == ',') mPtr++;
+ 
+    // Get next arg
+    while(*mPtr != ',' && *mPtr != '\r' && *mPtr != '\n' && *mPtr != '\0')
+    {
+        *arg = *mPtr;
+        arg++;
+        mPtr++;
+    }
+
+    // End it
+    *arg = '\0';
+
+    return 1;
 }

@@ -103,7 +103,38 @@ private:
     //! To send message back to user
     void reply(const char* msg) { mStream->write(msg); }
 
+};
 
+//! Class to parse command arguments
+class XxArgParser
+{
+
+    const char* mArgs;
+    const char* mPtr;
+
+public:
+
+    //! Constructor with args string
+    XxArgParser(const char* args) : mArgs(args) { mPtr = mArgs; }
+
+    //! Fill arg with the arg string value
+    //! return 1 if an arg has been found
+    //! return 0 else
+    uint8_t getNextArg(char* arg);
+
+    //!
+    template<typename TY>
+    uint8_t toIntList(TY* li)
+    {
+        uint8_t n = 0;
+        char arg[8];
+        while(getNextArg(arg))
+        {
+            li[n] = String(arg).toInt();
+            n++;
+        }
+        return n;
+    }
 
 };
 
