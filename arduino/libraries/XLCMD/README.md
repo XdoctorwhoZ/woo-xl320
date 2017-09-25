@@ -1,30 +1,32 @@
+XLCMD
+=====
 
+Example
+-------
 
+```bash
+# First ping to know how many servos are connected and responding
+> XL+PING?
+ping={1, 2, 3, 4} # here we have 4 servos
 
-# 1) Driver for xl-320 on arduino
+# Just select the 1 first to control
+> XL+SEL=1
 
-## 2.1) About
+# Move the selected servo to 512
+> XL+GPOS=512
 
-## 2.2) Install
+# Get goal position of the selected servo
+> XL+GPOS?
 
-## 2.3) Use
+# Get goal position of the selected servo
+> XL+GPOS?
+```
 
+Commands structure
+------------------
 
-
-# 2) Command machine to control servos through serial
-
-
-## 2.1) About
-
-## 2.2) Install
-
-## 2.3) Use
-
-
-### Command structure
-
-- **Command to get values** : XX+CMD?
-- **Command to set values** : XX+CMD=ARGS
+- **Command to get values** : XL+CMD?
+- **Command to set values** : XL+CMD=ARG0,ARG1, ..., ARGN
 
 Available CMD values and its ARGS are here in the table
 
