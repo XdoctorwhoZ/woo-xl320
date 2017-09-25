@@ -25,6 +25,71 @@ enum Instruction : uint8_t
     BulkWrite       = 0x93 , // For multiple devices, Instruction to write data on different Addresses with different lengths at once
 };
 
+//! Access right
+enum RegAccess
+{
+    NoAccess,
+    ReadOnly,
+    WriteOnly,
+    ReadWrite
+};
+
+//! Structure to represent an entry of the register map
+struct RegEntry
+{
+    const char*     area;
+    uint8_t         address;
+    uint8_t         size;
+    const char*     name;
+    RegAccess       access;
+    uint32_t        initial_value;
+    uint32_t        min;
+    uint32_t        max;
+};
+
+//! Index for each register in the map table
+enum RegIndex
+{
+    ModelNumber             =  0,
+    VersionofFirmware       =  1,
+    ID                      =  2,
+    BaudRate                =  3,
+    ReturnDelayTime         =  4,
+    CWAngleLimit            =  5,
+    CCWAngleLimit           =  6,
+    UNUSED_0                =  7,
+    ControlMode             =  8,
+    LimitTemperature        =  9,
+    lowerLimitVoltage       = 10,
+    UpperLimitVoltage       = 11,
+    MaxTorque               = 12,
+    ReturnLevel             = 13,
+    AlarmShutdown           = 14,
+    UNUSED_1                = 15,
+    TorqueEnable            = 16,
+    LED                     = 17,
+    UNUSED_2                = 18,
+    DGain                   = 19,
+    IGain                   = 20,
+    PGain                   = 21,
+    GoalPosition            = 22,
+    MovingSpeed             = 23,
+    UNUSED_3                = 24,
+    TorqueLimit             = 25,
+    PresentPosition         = 26,
+    PresentSpeed            = 27,
+    PresentLoad             = 28,
+    UNUSED_4                = 29,
+    PresentVoltage          = 30,
+    PresentTemperature      = 31,
+    RegisteredInstruction   = 32,
+    UNUSED_5                = 33,
+    Moving                  = 34,
+    HardwareErrorStatus     = 35,
+    Punch                   = 36,
+    Total                   = 37,
+};
+
 } // xl320
 } // woo
 

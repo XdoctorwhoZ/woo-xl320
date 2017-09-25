@@ -11,94 +11,23 @@ using namespace woo::xl320;
 /* ============================================================================
  *
  * */
-const Servo::RegisterEntry Servo::RegisterMap[] =
+int Servo::RegMapSize()
 {
-    { "EEPROM",  0, 2, "Model Number"           , ReadOnly  , 350        , 0xFFFFFFFF , 0xFFFFFFFF } ,
-    { "EEPROM",  2, 1, "Version of Firmware"    , ReadOnly  , 0xFFFFFFFF , 0xFFFFFFFF , 0xFFFFFFFF } ,
-    { "EEPROM",  3, 1, "ID"                     , ReadWrite , 1          , 0          , 252        } ,
-    { "EEPROM",  4, 1, "Baud Rate"              , ReadWrite , 3          , 0          , 3          } ,
-    { "EEPROM",  5, 1, "Return Delay Time"      , ReadWrite , 250        , 0          , 254        } ,
-    { "EEPROM",  6, 2, "CW Angle Limit"         , ReadWrite , 0          , 0          , 1023       } ,
-    { "EEPROM",  8, 2, "CCW Angle Limit"        , ReadWrite , 1023       , 0          , 1023       } ,
-    { "EEPROM", 10, 1, "UNUSED"                 , ReadOnly  , 0xFFFFFFFF , 0xFFFFFFFF , 0xFFFFFFFF } ,
-    { "EEPROM", 11, 1, "Control Mode"           , ReadWrite , 2          , 1          , 2          } ,
-    { "EEPROM", 12, 1, "Limit Temperature"      , ReadWrite , 65         , 0          , 150        } ,
-    { "EEPROM", 13, 1, "lower Limit Voltage"    , ReadWrite , 60         , 50         , 250        } ,
-    { "EEPROM", 14, 1, "Upper Limit Voltage"    , ReadWrite , 90         , 50         , 250        } ,
-    { "EEPROM", 15, 2, "Max Torque"             , ReadWrite , 1023       , 0          , 1023       } ,
-    { "EEPROM", 17, 1, "Return Level"           , ReadWrite , 2          , 0          , 2          } ,
-    { "EEPROM", 18, 1, "Alarm Shutdown"         , ReadWrite , 3          , 0          , 7          } ,
-    { "EEPROM", 19, 5, "UNUSED"                 , ReadOnly  , 0xFFFFFFFF , 0xFFFFFFFF , 0xFFFFFFFF } ,
-
-    { "RAM"   , 24, 1, "Torque Enable"          , ReadWrite , 0          , 0          , 1          } ,
-    { "RAM"   , 25, 1, "LED"                    , ReadWrite , 0          , 0          , 7          } ,
-    { "RAM"   , 26, 1, "UNUSED"                 , ReadOnly  , 0xFFFFFFFF , 0xFFFFFFFF , 0xFFFFFFFF } ,
-    { "RAM"   , 27, 1, "D Gain"                 , ReadWrite , 0          , 0          , 254        } ,
-    { "RAM"   , 28, 1, "I Gain"                 , ReadWrite , 0          , 0          , 254        } ,
-    { "RAM"   , 29, 1, "P Gain"                 , ReadWrite , 32         , 0          , 254        } ,
-    { "RAM"   , 30, 2, "Goal Position"          , ReadWrite , 0xFFFFFFFF , 0          , 1023       } ,
-    { "RAM"   , 32, 2, "Moving Speed"           , ReadWrite , 0xFFFFFFFF , 0          , 2047       } ,
-    { "RAM"   , 34, 1, "UNUSED"                 , ReadOnly  , 0xFFFFFFFF , 0xFFFFFFFF , 0xFFFFFFFF } ,
-    { "RAM"   , 35, 2, "Torque Limit"           , ReadWrite , 0xFFFFFFFF , 0          , 1023       } ,
-    { "RAM"   , 37, 2, "Present Position"       , ReadOnly  , 0xFFFFFFFF , 0xFFFFFFFF , 0xFFFFFFFF } ,
-    { "RAM"   , 39, 2, "Present Speed"          , ReadOnly  , 0xFFFFFFFF , 0xFFFFFFFF , 0xFFFFFFFF } ,
-    { "RAM"   , 41, 2, "Present Load"           , ReadOnly  , 0xFFFFFFFF , 0xFFFFFFFF , 0xFFFFFFFF } ,
-    { "RAM"   , 43, 2, "UNUSED"                 , ReadOnly  , 0xFFFFFFFF , 0xFFFFFFFF , 0xFFFFFFFF } ,
-    { "RAM"   , 45, 1, "Present Voltage"        , ReadOnly  , 0xFFFFFFFF , 0xFFFFFFFF , 0xFFFFFFFF } ,
-    { "RAM"   , 46, 1, "Present Temperature"    , ReadOnly  , 0xFFFFFFFF , 0xFFFFFFFF , 0xFFFFFFFF } ,
-    { "RAM"   , 47, 1, "Registered Instruction" , ReadOnly  , 0          , 0xFFFFFFFF , 0xFFFFFFFF } ,
-    { "RAM"   , 48, 1, "UNUSED"                 , ReadOnly  , 0xFFFFFFFF , 0xFFFFFFFF , 0xFFFFFFFF } ,
-    { "RAM"   , 49, 1, "Moving"                 , ReadOnly  , 0          , 0xFFFFFFFF , 0xFFFFFFFF } ,
-    { "RAM"   , 50, 1, "Hardware Error Status"  , ReadOnly  , 0          , 0xFFFFFFFF , 0xFFFFFFFF } ,
-    { "RAM"   , 51, 2, "Punch"                  , ReadWrite , 32         , 0          , 1023       } ,
-
-    { "END"   ,  0, 0, ""                       , NoAccess  , 0xFFFFFFFF , 0xFFFFFFFF , 0xFFFFFFFF } ,
-};
-
-/* ============================================================================
- *
- * */
-bool Servo::CheckRegisterMapIntegrity()
-{
-    int i = 0;
-    while (strcmp(RegisterMap[i+1].area, "END") != 0)
-    {
-        const RegisterEntry& r0 = RegisterMap[i];
-        const RegisterEntry& r1 = RegisterMap[i+1];
-
-        // Check if there is no gaps between registers
-        const uint8_t sum = r0.address + r0.size;
-        if(sum != r1.address)
-        {
-            // log() << "Register map error: missing registers %d+%d!=%d", r0.address, r0.size, r1.address);
-            return false;
-        }
-
-        i++;
-    }
-    return true;
-}
-
-/* ============================================================================
- *
- * */
-int Servo::RegisterMapSize()
-{
-    const RegisterEntry& r = RegisterMap[Punch];
+    const RegEntry& r = Packet::RegMap[Punch];
     return (r.address + r.size + 1);
 }
 
 /* ============================================================================
  *
  * */
-Servo::RegisterIndex Servo::RegisterAddr2RegisterIndex(uint8_t addr)
+RegIndex Servo::RegisterAddr2RegIndex(uint8_t addr)
 {
-    for(int i=0 ; i<(int)Servo::RegisterIndex::Total ; i++)
+    for(int i=0 ; i<(int)RegIndex::Total ; i++)
     {
-        const Servo::RegisterEntry& r = Servo::RegisterMap[i];
-        if(r.address == addr) return (RegisterIndex)i;
+        const RegEntry& r = Packet::RegMap[i];
+        if(r.address == addr) return (RegIndex)i;
     }
-    return RegisterIndex::Total;
+    return RegIndex::Total;
 }
 
 /* ============================================================================
@@ -108,10 +37,7 @@ Servo::Servo(uint8_t id, Service* service)
     : mService(service)
     , mId(id)
 {
-    if ( ! CheckRegisterMapIntegrity() ) {
-        throw std::logic_error("woo::xl320::Servo -> map registers is not valid");
-    }
-    const int map_size = RegisterMapSize();
+    const int map_size = RegMapSize();
     mData.resize(map_size);
     std::fill(mData.begin(),mData.end(),0);
 }
@@ -119,7 +45,7 @@ Servo::Servo(uint8_t id, Service* service)
 /* ============================================================================
  *
  * */
-uint16_t Servo::get(RegisterIndex index) const
+uint16_t Servo::get(RegIndex index) const
 {
     return get(index, mData);
 }
@@ -127,13 +53,13 @@ uint16_t Servo::get(RegisterIndex index) const
 /* ============================================================================
  *
  * */
-void Servo::set(RegisterIndex index, uint16_t value)
+void Servo::set(RegIndex index, uint16_t value)
 {
     // log
     log() << "+ Servo::set(" << (int)index << ", " << value << ")";
 
     // Get entry in the map
-    const RegisterEntry& entry = RegisterMap[index];
+    const RegEntry& entry = Packet::RegMap[index];
 
     // Register the modification
     PushEntry pe = {index, value};
@@ -143,7 +69,7 @@ void Servo::set(RegisterIndex index, uint16_t value)
 /* ============================================================================
  *
  * */
-void Servo::pull(const std::list<RegisterIndex>& indexes)
+void Servo::pull(const std::list<RegIndex>& indexes)
 {
     log() << "+ Servo::pull(queue_size[" << indexes.size() << "])";
 
@@ -160,7 +86,7 @@ void Servo::pull(const std::list<RegisterIndex>& indexes)
     // // Append order for each pull request
     // for(auto index : indexes)
     // {
-    //     const RegisterEntry& entry = RegisterMap[index];
+    //     const RegEntry& entry = Packet::RegMap[index];
     //     log()   << "    - Add order(pull, " << (int)mId << ", "
     //             << (int)entry.address << ", " << (int)entry.size << ")";
     //     command << Command::Order(Command::Type::pull, mId, entry.address, entry.size);
@@ -173,9 +99,9 @@ void Servo::pull(const std::list<RegisterIndex>& indexes)
 /* ============================================================================
  *
  * */
-void Servo::pull(RegisterIndex index)
+void Servo::pull(RegIndex index)
 {
-    std::list<RegisterIndex> indexes;
+    std::list<RegIndex> indexes;
     indexes.push_back(index);
     pull(indexes);
 }
@@ -185,7 +111,7 @@ void Servo::pull(RegisterIndex index)
  * */
 void Servo::pullAll()
 {
-    std::list<RegisterIndex> indexes;
+    std::list<RegIndex> indexes;
     indexes.push_back(ModelNumber             );
     indexes.push_back(VersionofFirmware       );
     indexes.push_back(ID                      );
@@ -243,7 +169,7 @@ void Servo::push()
     // while(!mRequestedPush.empty())
     // {
     //     PushEntry pentry = mRequestedPush.front();
-    //     const RegisterEntry& entry = RegisterMap[pentry.index];
+    //     const RegEntry& entry = Packet::RegMap[pentry.index];
 
     //     // log
     //     log()   << "    - Add order(push, " << (int)mId << ", "
@@ -261,9 +187,9 @@ void Servo::push()
 /* ============================================================================
  *
  * */
-uint16_t Servo::get(RegisterIndex index, const ByteArray& regTable) const
+uint16_t Servo::get(RegIndex index, const ByteArray& regTable) const
 {
-    const RegisterEntry& entry = RegisterMap[index];
+    const RegEntry& entry = Packet::RegMap[index];
     switch(entry.size)
     {
         case 1:
@@ -282,9 +208,9 @@ uint16_t Servo::get(RegisterIndex index, const ByteArray& regTable) const
 /* ============================================================================
  *
  * */
-void Servo::set(RegisterIndex index, uint16_t value, ByteArray& regTable)
+void Servo::set(RegIndex index, uint16_t value, ByteArray& regTable)
 {
-    const RegisterEntry& entry = RegisterMap[index];
+    const RegEntry& entry = Packet::RegMap[index];
     switch(entry.size)
     {
         case 1:

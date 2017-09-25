@@ -22,16 +22,51 @@ struct Order
 //! Order to request ping
 struct PingOrder : public Order
 {
-    Instruction instruction()
-    {
-        return Instruction::Ping;
-    }
-    void buildBuffer(std::vector<uint8_t>& buffer)
-    {
-        Packet::Build(buffer, Packet::BroadcastId, Instruction::Ping);
-    }
+    Instruction instruction() { return Instruction::Ping; }
+    void buildBuffer(std::vector<uint8_t>& buffer) { Packet::Build(buffer, Packet::BroadcastId, Instruction::Ping); }
 };
 
+//! Simple order to read a register 'reg' from a specific servo 'id'
+struct ReadOrder : public Order
+{
+    uint8_t  id;
+    RegIndex reg;
+    ReadOrder(uint8_t id, RegIndex reg) : id(id), reg(reg) { }
+    Instruction instruction() { return Instruction::Read; }
+    void buildBuffer(std::vector<uint8_t>& buffer);
+};
+
+//! Order to write a register
+struct WriteOrder : public Order
+{
+    uint8_t  id;
+    RegIndex reg;
+    uint16_t value;
+    WriteOrder(uint8_t id, RegIndex reg, uint16_t value) : id(id), reg(reg), value(value) { }
+    Instruction instruction() { return Instruction::Write; }
+    void buildBuffer(std::vector<uint8_t>& buffer);
+};
+
+//!
+struct SyncReadOrder : public Order
+{
+    uint8_t  id;
+    RegIndex reg;
+    SyncReadOrder(uint8_t id, RegIndex reg) : id(id), reg(reg) { }
+    Instruction instruction() { return Instruction::SyncRead; }
+    void buildBuffer(std::vector<uint8_t>& buffer);
+};
+
+//!
+struct SyncWriteOrder : public Order
+{
+    uint8_t  id;
+    RegIndex reg;
+    uint16_t value;
+    SyncWriteOrder(uint8_t id, RegIndex reg, uint16_t value) : id(id), reg(reg), value(value) { }
+    Instruction instruction() { return Instruction::SyncWrite; }
+    void buildBuffer(std::vector<uint8_t>& buffer);
+};
 
 } // xl320
 } // woo

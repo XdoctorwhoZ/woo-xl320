@@ -14,45 +14,31 @@
 // ---
 namespace woo { namespace xl320 {
 
-
-//! Packet manager
-//!
+//! Low layer data manager, to build and parse data packet
 class Packet
 {
 
     // Constant value definitions
-    static constexpr uint8_t Header0        = 0xFF;
-    static constexpr uint8_t Header1        = 0xFF;
-    static constexpr uint8_t Header2        = 0xFD;
-    static constexpr uint8_t Reserve        = 0x00;
+    static constexpr uint8_t Header0 = 0xFF;
+    static constexpr uint8_t Header1 = 0xFF;
+    static constexpr uint8_t Header2 = 0xFD;
+    static constexpr uint8_t Reserve = 0x00;
 
 public:
-    
+
+    //! Map of registers of the servo
+    static const RegEntry RegMap[];
+
     // Constant value definitions
     static constexpr uint8_t BroadcastId    = 0xFE;
 
-    //! Return value for the function that validate packet structure
-    enum PacketState
-    {
-        PsValid       = 0x1 ,
-        PsBadHeader   = 0x2 ,
-        PsBadCrc      = 0x3 ,
-    };
-
-    //! Function to compute the requested size of the buffer for a given number of params
-    //! + 7 header size
-    //! + 1 instruction
-    //! + 2 crc
-    //! + params size
-    static int ComputeBufferSize(int params_size) { return 7 + 1 + 2 + params_size; }
-
-    // Helper functions
-    static inline uint8_t  WordLoByte(uint16_t w) { return (uint8_t) (w & 0xff); }
-    static inline uint8_t  WordHiByte(uint16_t w) { return (uint8_t) ((w >> 8) & 0xff); }
-    static inline uint16_t MakeWord(uint8_t lo, uint8_t hi) { return (uint16_t)( ((uint16_t)lo) | (((uint16_t)hi)<<8) ); }
-
     //! Function to compute crc16 for dynamixel
     static uint16_t UpdateCRC(uint16_t crc_accum, uint8_t* data_blk_ptr, uint16_t data_blk_size);
+
+    // Helper functions
+    static inline uint8_t WordLoByte(uint16_t w) { return (uint8_t) (w & 0xff); }
+    static inline uint8_t WordHiByte(uint16_t w) { return (uint8_t) ((w >> 8) & 0xff); }
+    static inline uint16_t MakeWord(uint8_t lo, uint8_t hi) { return (uint16_t)( ((uint16_t)lo) | (((uint16_t)hi)<<8) ); }
 
 private:
 

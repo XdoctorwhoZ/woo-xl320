@@ -13,54 +13,34 @@
 // ---
 namespace woo { namespace xl320 {
 
-//!
+//! Define that must be used for debug logs in the module
+#define WOO_XL320_LOG woo::xl320::log(__func__)
+
+//! Wrapper to use the ofstream
 class ofStreamWrapper
 {
+    //! Name of the log file
+    static constexpr const char* FileName = "woo-xl320.log";
+
 public:
-
     std::ofstream stream;
-
-    ofStreamWrapper(){}
-    ~ofStreamWrapper()
-    {
-        if(stream.is_open()) { stream.close(); }
-    }
-    void openIfNot()
-    {
-        if(!stream.is_open()) { stream.open("woo-xl320.log"); }
-    }
+    ofStreamWrapper() { }
+    ~ofStreamWrapper() { if(stream.is_open()) { stream.close(); } }
+    void openIfNot() { if(!stream.is_open()) { stream.open(FileName); } }
 };
 
 //! Class to log into a debug file
 class FileLog
 {
-
     static std::mutex Mutex;
     static ofStreamWrapper File;
-
     std::shared_ptr<std::ostringstream> mLocalBuffer;
 
 public:
-
-    FileLog() : mLocalBuffer(new std::ostringstream()) { }
-    
-    ~FileLog()
-    {
-        std::lock_guard<std::mutex> lock(Mutex);
-        File.openIfNot();
-        File.stream
-            << "0x" << std::hex << std::this_thread::get_id()
-            << "\t\t" << mLocalBuffer->str()
-            << "\n";
-        File.stream.flush();
-    }
-
+    FileLog(const char* func = "");    
+    ~FileLog();
     template<typename T>
-    FileLog& operator<<(const T& el)
-    {
-        *mLocalBuffer << el;
-        return *this;
-    }
+    FileLog& operator<<(const T& el) { *mLocalBuffer << el; return *this; }
 };
 
 //! Empty log interface to skip logs
@@ -73,10 +53,10 @@ public:
 };
 
 //! Interface function for the all application
-inline auto log()
+inline auto log(const char* func = "")
 {
 #ifdef WOO_XL320_DEBUG_LOG
-    return FileLog();
+    return FileLog(func);
 #else
     return EmptyLog();
 #endif

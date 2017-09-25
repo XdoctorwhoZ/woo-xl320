@@ -37,83 +37,20 @@ class Servo
 
 public:
 
-    //! Access right
-    enum RegisterAccess { NoAccess, ReadOnly, WriteOnly, ReadWrite };
 
-    //! Structure to represent an entry of the register map
-    struct RegisterEntry
-    {
-        const char*     area;
-        uint8_t         address;
-        uint8_t         size;
-        const char*     name;
-        RegisterAccess  access;
-        uint32_t        initial_value;
-        uint32_t        min;
-        uint32_t        max;
-    };
-
-    //! Index for each register in the map table
-    enum RegisterIndex
-    {
-        ModelNumber             =  0,
-        VersionofFirmware       =  1,
-        ID                      =  2,
-        BaudRate                =  3,
-        ReturnDelayTime         =  4,
-        CWAngleLimit            =  5,
-        CCWAngleLimit           =  6,
-        UNUSED_0                =  7,
-        ControlMode             =  8,
-        LimitTemperature        =  9,
-        lowerLimitVoltage       = 10,
-        UpperLimitVoltage       = 11,
-        MaxTorque               = 12,
-        ReturnLevel             = 13,
-        AlarmShutdown           = 14,
-        UNUSED_1                = 15,
-        TorqueEnable            = 16,
-        LED                     = 17,
-        UNUSED_2                = 18,
-        DGain                   = 19,
-        IGain                   = 20,
-        PGain                   = 21,
-        GoalPosition            = 22,
-        MovingSpeed             = 23,
-        UNUSED_3                = 24,
-        TorqueLimit             = 25,
-        PresentPosition         = 26,
-        PresentSpeed            = 27,
-        PresentLoad             = 28,
-        UNUSED_4                = 29,
-        PresentVoltage          = 30,
-        PresentTemperature      = 31,
-        RegisteredInstruction   = 32,
-        UNUSED_5                = 33,
-        Moving                  = 34,
-        HardwareErrorStatus     = 35,
-        Punch                   = 36,
-        Total                   = 37,
-    };
 
     //! Modification request
     struct PushEntry
     {
-        RegisterIndex index;
-        uint16_t      data;
+        RegIndex index;
+        uint16_t data;
     };
 
-    //! Map of registers of the servo
-    static const RegisterEntry RegisterMap[];
-
-    //! Return true if the map seams correct
-    static bool CheckRegisterMapIntegrity();
-
     //! Return the size of the all register block
-    static int RegisterMapSize();
+    static int RegMapSize();
 
     //!
-    static RegisterIndex RegisterAddr2RegisterIndex(uint8_t addr);
+    static RegIndex RegisterAddr2RegIndex(uint8_t addr);
 
 public:
 
@@ -136,12 +73,12 @@ public:
     uint8_t getId() { return mId; }
 
     // Getter and setter for local values
-    uint16_t get(RegisterIndex index) const;
-    void set(RegisterIndex index, uint16_t value);
+    uint16_t get(RegIndex index) const;
+    void set(RegIndex index, uint16_t value);
 
     //! Get remote value from servo
-    void pull(const std::list<RegisterIndex>& indexes);
-    void pull(RegisterIndex index);
+    void pull(const std::list<RegIndex>& indexes);
+    void pull(RegIndex index);
     void pullAll();
 
     //! Send local modification to remote servo
@@ -150,23 +87,23 @@ public:
 private:
 
     //! To extract a value from working registers
-    uint16_t get(RegisterIndex index, const ByteArray& regTable) const;
+    uint16_t get(RegIndex index, const ByteArray& regTable) const;
 
     //! To set a value in working registers
-    void set(RegisterIndex index, uint16_t value, ByteArray& regTable);
+    void set(RegIndex index, uint16_t value, ByteArray& regTable);
 
     //! Update local values
-    void update(RegisterIndex index, uint16_t value) { set(index, value, mData); }
+    void update(RegIndex index, uint16_t value) { set(index, value, mData); }
 
 };
 
 //! ostream support for packet object
 inline std::ostream& operator<<(std::ostream& os, const Servo& obj)
 {
-    for(int i=0 ; i<(int)Servo::RegisterIndex::Total ; i++)
+    for(int i=0 ; i<(int)RegIndex::Total ; i++)
     {
-        const Servo::RegisterEntry& r = Servo::RegisterMap[i];
-        os << "    - " << r.name << " : " << obj.get((Servo::RegisterIndex)i) << "\r\n";
+        const RegEntry& r = Packet::RegMap[i];
+        os << "    - " << r.name << " : " << obj.get((RegIndex)i) << "\r\n";
     }
     return os;
 }

@@ -59,27 +59,28 @@ Service::~Service()
  * */
 void Service::start()
 {
-    boost::system::error_code ec;
-
-    log() << "+ Service::start()...";
+    // debug
+    WOO_XL320_LOG << "Beg";
 
     // Check if the port is already opened
     if (mPort)
     {
-        log() << "    ! Port is already opened";
+        WOO_XL320_LOG << "!!!! Warning port is already opened";
         return;
     }
 
-    log() << "    - Device   (" << mSerialDevice   << ")";
-    log() << "    - Baudrate (" << mSerialBaudrate << ")";
+    // debug
+    WOO_XL320_LOG << "Device   (" << mSerialDevice   << ")";
+    WOO_XL320_LOG << "Baudrate (" << std::dec << mSerialBaudrate << ")";
 
     // Create serial port
     mPort.reset(new AsioSerialPort(mIos));
+    boost::system::error_code ec;
     mPort->open(mSerialDevice, ec);
     if (ec)
     {
-        log() << "    ! Port openning failed... dev("
-              << mSerialDevice << "), err(" << ec.message().c_str() << ")";
+        WOO_XL320_LOG   << "!!!! Port openning failed... dev("
+                        << mSerialDevice << "), err(" << ec.message().c_str() << ")";
         throw std::runtime_error("Unable to open serial port");
     }
 
@@ -97,8 +98,8 @@ void Service::start()
     // Start async read loop
     prepareAsyncRead();
 
-    // log
-    log() << "+ Service::start()...OK";
+    // debug
+    WOO_XL320_LOG << "End";
 }
 
 /* ============================================================================
@@ -106,14 +107,14 @@ void Service::start()
  * */
 void Service::stop()
 {
-    // log
-    log() << "+ Service::stop()...";
+    // debug
+    WOO_XL320_LOG << "Beg";
 
     // Stop service and wait thread end
     mIos.stop();
     if (mIosThread) mIosThread->join();
 
-    // Delete port if 
+    // Delete port if
     if (mPort)
     {
         mPort->cancel();
@@ -125,7 +126,7 @@ void Service::stop()
     mIos.reset();
 
     // log
-    log() << "+ Service::stop()...OK";
+    WOO_XL320_LOG << "End";
 }
 
 /* ============================================================================
@@ -133,11 +134,14 @@ void Service::stop()
  * */
 void Service::sendPing()
 {
-    // log
-    log() << "+ Service::sendPing()";
+    // debug
+    WOO_XL320_LOG << "Beg";
 
     // Prepare command with only ping order then register it
-    // registerCommand( Command() << Command::Order(Command::Type::ping) );
+    registerCommand( Command() << new PingOrder() );
+
+    // debug
+    WOO_XL320_LOG << "End";
 }
 
 /* ============================================================================
@@ -145,8 +149,8 @@ void Service::sendPing()
  * */
 void Service::registerCommand(const Command& cmd)
 {
-    // log
-    log() << "+ Service::registerCommand()";
+    // debug
+    WOO_XL320_LOG << "Beg";
 
     // Lock
     ScopeLock lock(mCommandMutex);
@@ -156,6 +160,9 @@ void Service::registerCommand(const Command& cmd)
 
     // Post action to execute the next command
     mIos.post(boost::bind(&Service::commandStateMachine, this));
+
+    // debug
+    WOO_XL320_LOG << "End";
 }
 
 /* ============================================================================
@@ -191,8 +198,8 @@ Servo* Service::getServo(uint8_t id)
  * */
 void Service::commandStateMachine()
 {
-    // log
-    log() << "+ Service::commandStateMachine()";
+    // debug
+    WOO_XL320_LOG << "Beg";
 
     // lock
     ScopeLock lock(mCommandMutex);
@@ -200,13 +207,13 @@ void Service::commandStateMachine()
     // First check if a command is already running
     if( !mCommandInProcess )
     {
-        // log
-        log() << "    - Try to get the next command";
+        // debug
+        WOO_XL320_LOG << "Try to get the next command";
 
         // No more command to send
         if( mCommandQueue.empty() )
         {
-            log() << "    - Command queue is empty";
+            WOO_XL320_LOG << "Command queue is empty";
             return;
         }
 
@@ -217,8 +224,8 @@ void Service::commandStateMachine()
         mCommandCurrent = mCommandQueue.front();
         mCommandQueue.pop();
 
-        // log
-        log() << "    - New command selected";
+        // debug
+        WOO_XL320_LOG << "New command selected";
 
         // Try to send next command
         mIos.post(boost::bind(&Service::commandStateMachine, this));
@@ -228,7 +235,7 @@ void Service::commandStateMachine()
         // Check if order is already running
         if(mOrderInProcess)
         {
-            log() << "    - Order already running, wait...";
+            WOO_XL320_LOG << "Order already running, wait...";
             return;
         }
 
@@ -236,7 +243,7 @@ void Service::commandStateMachine()
         if(mCommandCurrent.isOver())
         {
             // log
-            log() << "    - Command is over";
+            WOO_XL320_LOG << "Command is over";
 
             // Reset flag
             mCommandInProcess = false;
@@ -257,26 +264,30 @@ void Service::commandStateMachine()
         mOrderCurrent = mCommandCurrent.extract();
 
         // Reset ping result if it is an other ping command
-        // if(mOrderCurrent.type == Command::Type::ping)
-        // {
-        //     mPingMutex.lock();
-        //     mPingResult.clear();
-        //     mPingMutex.unlock();
-        // }
+        if(mOrderCurrent->instruction() == Instruction::Ping)
+        {
+            mPingMutex.lock();
+            mPingResult.clear();
+            mPingMutex.unlock();
+        }
 
         // Get packet from the order
-        // auto data = mOrderCurrent.toByteArray();
+        std::vector<uint8_t> buffer;
+        mOrderCurrent->buildBuffer(buffer);
 
         // log
-        // log() << "    - Command sent: " << ByteVector2HexStr(data);
+        WOO_XL320_LOG << "Command sent: " << ByteVector2HexStr(buffer);
 
-        // // Send command packet
-        // mPort->write_some( boost::asio::buffer(data, data.size()) );
+        // Send command packet
+        mPort->write_some( boost::asio::buffer(buffer, buffer.size()) );
 
-        // // Start timeout timer
-        // mOrderTimeout.expires_from_now( boost::posix_time::milliseconds(OrderTimeout) );
-        // mOrderTimeout.async_wait( boost::bind(&Service::endOrder, this) );
+        // Start timeout timer
+        mOrderTimeout.expires_from_now( boost::posix_time::milliseconds(OrderTimeout) );
+        mOrderTimeout.async_wait( boost::bind(&Service::endOrder, this) );
     }
+
+    // debug
+    WOO_XL320_LOG << "End";
 }
 
 /* ============================================================================
@@ -284,13 +295,13 @@ void Service::commandStateMachine()
  * */
 void Service::prepareAsyncRead()
 {
-    // log
-    log() << "+ Service::prepareAsyncRead()";
+    // debug
+    WOO_XL320_LOG << "Beg";
 
     // Check that port is ready
     if (mPort.get() == NULL || !mPort->is_open())
     {
-        log() << "    - Port not ready";
+        WOO_XL320_LOG << "!!!! Port not ready";
     }
 
     // Request async read
@@ -303,6 +314,9 @@ void Service::prepareAsyncRead()
             boost::asio::placeholders::bytes_transferred
             )
         );
+
+    // debug
+    WOO_XL320_LOG << "End";
 }
 
 /* ============================================================================
@@ -456,15 +470,38 @@ void Service::parsePacket()
  * */
 void Service::processPacket(const Packet& pack)
 {
-    // log() << "+ Service::processPacket(" << pack << ")";
+    // debug
+    WOO_XL320_LOG << "Beg";
+    WOO_XL320_LOG << "Pack(" << pack << ")";
 
-    // switch(mOrderCurrent.type)
-    // {
-    //     case Command::Type::none: break;
-    //     case Command::Type::ping: processPacket_Ping(pack); break;
-    //     case Command::Type::pull: processPacket_Pull(pack); break;
-    //     case Command::Type::push: processPacket_Push(pack); break;
-    // }
+    // Dispatch instruction
+    switch(mOrderCurrent->instruction())
+    {
+        case Ping:
+            processPacket_Ping(pack);
+            break;
+        case Read:
+        case SyncRead:
+            processPacket_Pull(pack);
+            break;
+        case Write:
+        case SyncWrite:
+            processPacket_Push(pack);
+            break;
+        case RegWrite       : {  break; }
+        case Action         : {  break; }
+        case FactoryReset   : {  break; }
+        case Reboot         : {  break; }
+        case Status         : {  break; }
+        case BulkRead       : {  break; }
+        case BulkWrite      : {  break; }
+        default:
+            log() << "???????????";
+            break;
+    }
+
+    // debug
+    WOO_XL320_LOG << "End";
 }
 
 /* ============================================================================
