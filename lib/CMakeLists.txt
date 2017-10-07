@@ -1,11 +1,8 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 2.8.0)
-PROJECT(woo-xl320 CXX)
 MESSAGE("[ in] ${CMAKE_CURRENT_LIST_FILE}")
 
-
-# - Library
+# - Library woo-xl320
 ADD_LIBRARY(
-    woo-xl320
+    WooXl320
     SHARED
     Log.cxx
     Order.cxx
@@ -13,9 +10,15 @@ ADD_LIBRARY(
     Packet.cxx
     Service.cxx
     )
+TARGET_LINK_LIBRARIES(
+    WooXl320
+    LINK_PUBLIC ${Boost_LIBRARIES} -pthread
+    )
 
-TARGET_LINK_LIBRARIES( woo-xl320 LINK_PUBLIC ${Boost_LIBRARIES} -pthread)
-
-
+# - Install woo-xl320
+INSTALL(
+    TARGETS     WooXl320
+    DESTINATION ${WOO_INSTALL_DIR_LIB}
+    )
 
 MESSAGE("[out] ${CMAKE_CURRENT_LIST_FILE}")

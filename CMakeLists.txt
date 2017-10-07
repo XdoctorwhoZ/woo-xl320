@@ -1,17 +1,21 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8.0)
-PROJECT(WooArduinoXl320 CXX)
+PROJECT(WooXl320 CXX)
 MESSAGE("[ in] ${CMAKE_CURRENT_LIST_FILE}")
 
 # - Options
 OPTION(WOO_XL320_BUILD_APPS "Build test/demo apps for xl320" OFF)
 OPTION(WOO_XL320_DEBUG_LOG "Record full debug logs into a file" OFF)
 
+# - Hard coded options
+SET(WOO_INSTALL_DIR_LIB "lib")
+SET(WOO_INSTALL_DIR_INC "include")
+
 # - Enable debug logs
 IF(WOO_XL320_DEBUG_LOG)
 	ADD_DEFINITIONS(-DWOO_XL320_DEBUG_LOG)
 ENDIF()
 
-# - Locale includes
+# - Local headers
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_LIST_DIR}/include)
 
 # - CXX
@@ -33,5 +37,33 @@ ADD_SUBDIRECTORY(lib)
 IF(WOO_XL320_BUILD_APPS)
     ADD_SUBDIRECTORY(app)
 ENDIF()
+
+# - Prepare file configurations
+CONFIGURE_FILE(
+    WooXl320Config.cmake.in
+    ${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/WooXl320Config.cmake
+    @ONLY
+    )
+CONFIGURE_FILE(
+    WooXl320ConfigVersion.cmake.in
+    ${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/WooXl320ConfigVersion.cmake
+    @ONLY
+    )
+
+# - Install headers
+INSTALL(
+    DIRECTORY   ${CMAKE_CURRENT_LIST_DIR}/include/woo
+    DESTINATION ${WOO_INSTALL_DIR_INC}
+    )
+
+# - Install libs
+INSTALL(
+    FILES       ${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/WooXl320Config.cmake
+    DESTINATION ${WOO_INSTALL_DIR_LIB}/cmake
+    )
+INSTALL(
+    FILES       ${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/WooXl320ConfigVersion.cmake
+    DESTINATION ${WOO_INSTALL_DIR_LIB}/cmake
+    )
 
 MESSAGE("[out] ${CMAKE_CURRENT_LIST_FILE}")
