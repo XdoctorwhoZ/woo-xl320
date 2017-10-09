@@ -155,13 +155,13 @@ void Machine::parse_command(char* ptr)
 
     if (!found)
     {
-        reply("Unknow command"); return;
+        reply("Unknow command\r\n"); return;
     }
 
     // Check if this is a getter of setters function
     if (save != '?' && save != '=')
     {
-        reply("Missing indicator ? or ="); return;
+        reply("Missing indicator ? or =\r\n"); return;
     }
 
     // Getter command

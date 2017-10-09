@@ -30,40 +30,40 @@ Commands structure
 
 Available CMD values and its ARGS are here in the table
 
-| Command           | Description   | Write Arguments  |
-| ----------------- |:-------------:|:-------------:|
-| XBAUD             |               |                   |
-| PING              |               |                   |
-| SEL               |               |                   |
-| MODEL             |               |                   |
-| VERSION           |               |                   |
-| ID                |               |                   |
-| BAUD              |               |                   |
-| RDT               |               |                   |
-| ANG_LIM_MIN       |               |                   |
-| ANG_LIM_MAX       |               |                   |
-| CTRL_MODE         |               |                   |
-| TEMP_LIM          |               |                   |
-| VOLT_LIMIT_D      |               |                   |
-| VOLT_LIMIT_U      |               |                   |
-| MAX_TORQUE        |               |                   |
-| RET_LEVEL         |               |                   |
-| ALARM             |               |                   |
-| TORQUE_ENABLE     |               |                   |
-| LED               |               |                   |
-| DGAIN             |               |                   |
-| IGAIN             |               |                   |
-| PGAIN             |               |                   |
-| GPOS              |               |                   |
-| GSPEED            |               |                   |
-| GTORQUE           |               |                   |
-| PPOS              |               |  Read Only        |
-| PSPEED            |               |  Read Only        |
-| PLOAD             |               |  Read Only        |
-| PVOLT             |               |  Read Only        |
-| PTEMP             |               |  Read Only        |
-| REG_INSTRU        |               |  Read Only        |
-| MOVING            |               |  Read Only        |
-| HARDWARE_ERROR    |               |                   |
-| PUNCH             |               |                   |
+| Command           | Description                           | Arguments                         |
+| ----------------- |:-------------------------------------:|:---------------------------------:|
+| XBAUD             | Comm speed of bw arduino and servo    | 9600  57600  115200  1000000      |
+| PING              |                                       |                                   |
+| SEL               |                                       |                                   |
+| MODEL             |                                       |                                   |
+| VERSION           |                                       |                                   |
+| ID                |                                       |                                   |
+| BAUD              | Comm speed of the servo               | 0:9600  1:57600  2:115200  3:1Mbps|
+| RDT               | Return Delay Time                     | 0 to 254, 2us delay by value      |
+| ANG_LIM_MIN       |                                       |                   |
+| ANG_LIM_MAX       |                                       |                   |
+| CTRL_MODE         |                                       |                   |
+| TEMP_LIM          |                                       |                   |
+| VOLT_LIMIT_D      |                                       |                   |
+| VOLT_LIMIT_U      |                                       |                   |
+| MAX_TORQUE        |                                       |                   |
+| RET_LEVEL         |                                       |                   |
+| ALARM             |                                       |                   |
+| TORQUE_ENABLE     |                                       |                   |
+| LED               |                                       |                   |
+| DGAIN             |                                       |                   |
+| IGAIN             |                                       |                   |
+| PGAIN             |                                       |                   |
+| GPOS              |                                       |                   |
+| GSPEED            |                                       |                   |
+| GTORQUE           |                                       |                   |
+| PPOS              |                                       |  Read Only        |
+| PSPEED            |                                       |  Read Only        |
+| PLOAD             |                                       |  Read Only        |
+| PVOLT             |                                       |  Read Only        |
+| PTEMP             |                                       |  Read Only        |
+| REG_INSTRU        |                                       |  Read Only        |
+| MOVING            |                                       |  Read Only        |
+| HARDWARE_ERROR    |                                       |                   |
+| PUNCH             |                                       |                   |
 
